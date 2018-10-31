@@ -164,12 +164,6 @@ proc			/proc		procfs	rw		0	0
 #pkgbox:/archive	/archive	nfs	ro,intr,bg	0	0
 EOF
 
-
-# Mount devfs and create a new initrd
-#
-mount_devfs /mnt/dev
-chroot /mnt mkinitrd
-
 # Because root is not on the boot partition we have to tell the loader
 # to tell the kernel where root is.
 #

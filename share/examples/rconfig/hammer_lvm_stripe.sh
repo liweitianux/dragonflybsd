@@ -480,10 +480,6 @@ cat >> /mnt/etc/sysctl.conf << EOF
 #net.inet.ip.portrange.first=4000
 EOF
 
-# mkinitd image
-echo "* Preparing initrd image"
-/sbin/mkinitrd -b /mnt/boot >> ${logfile} 2>&1
-
 # Warn about ssh
 echo ""
 echo "Warning:"
