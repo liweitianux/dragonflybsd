@@ -8,6 +8,14 @@
 #
 # set -x
 
+cat << EOF
+*** WARNING ***
+The mkinitrd(8) tool is removed and replaced by running "make initrd"
+in /usr/src.  This script doesn't work because it requires to modify
+the initrd content and create a new one.
+EOF
+exit 1
+
 disklist="da0 da1"
 bootdisk=""
 logfile="/tmp/hammer_ccd_mirror.log"
