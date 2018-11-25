@@ -1,4 +1,4 @@
-ETC_SCRIPTS=	rc rc.lvm2 rcmount_crypt rcmount_tcplay
+ETC_SCRIPTS=	rc rcdev_lvm rcmount_local rcmount_crypt rcmount_tcplay
 ETC_FILES=	${.CURDIR}/motd \
 		${.CURDIR}/../../etc/group \
 		${.CURDIR}/../../etc/master.passwd \

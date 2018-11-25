@@ -1,0 +1,11 @@
+#!/bin/sh
+
+FSTYPE="$1"
+MOUNTFROM="/dev/${2#/dev/}"
+MNTOPTS="$3"
+
+echo "Mounting $FSTYPE root filesystem from local device $MOUNTFROM ..."
+mount -o ro -t $FSTYPE $MNTOPTS $MOUNTFROM $NEW_ROOT || {
+    echo "ERROR: Failed to mount $MOUNTFROM!"
+    return 3
+}

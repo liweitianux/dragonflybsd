@@ -1,0 +1,17 @@
+#!/bin/sh
+
+echo "Starting udevd for LVM ..."
+udevd
+
+echo "Configuring LVM volumes ..."
+
+export LVM_SYSTEM_DIR=/var/tmp/lvm2
+[ -d "$LVM_SYSTEM_DIR" ] || mkdir $LVM_SYSTEM_DIR
+
+lvm vgscan --mknodes --ignorelockingfailure >/dev/null
+lvm vgchange --ignorelockingfailure --available y >/dev/null
+VG_LIST=$(lvm vgdisplay --columns --noheadings --options vg_name)
+echo "Activated volume groups: $VG_LIST"
+
+echo "Stopping udevd ..."
+kill $(cat /var/run/udevd.pid)

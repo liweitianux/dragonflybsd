@@ -24,9 +24,6 @@ echo "Setting up /var directories ..."
 mount_tmpfs tmpfs /var
 mkdir /var/db /var/empty /var/home /var/run /var/tmp
 
-echo "Starting udevd for LVM ..."
-udevd
-
 echo "Executing additional rc scripts ..."
 for rcs in /etc/rc.*; do
 	if [ -x "$rcs" ]; then
@@ -34,43 +31,67 @@ for rcs in /etc/rc.*; do
 	fi
 done
 
-echo "Mounting real root partition at $NEW_ROOT ..."
+# Supported 'vfs.root.realroot' syntax:
+#
+# (1) local:<fs-type>:<dev-path>[:<mount-opts>]
+# (2) crypt:<fs-type>:<dev-path>:<map-name>[:<cryptsetup-opts>[:<mount-opts>]]
+# (3) tcplay:<fs-type>:<dev-path>:<map-name>[:<tcplay-opts>[:<mount-opts>]]
+#
+# lvm:<lvm-opts>:...
+# ccd:<ccd-opts>:...
+#
+# See also initrd(7) man page.
 
 IFS=':'
 REAL_ROOT=$(sysctl -n vfs.real_root)
-if [ $? -ne 0 ]; then
-	echo "ERROR: vfs.real_root sysctl no exist. The kernel is too old."
-	rescue_shell
-fi
 if [ -z "${REAL_ROOT}" ]; then
-	echo "ERROR: vfs.real_root sysctl not set."
+	echo "ERROR: 'vfs.root.realroot' is not set!"
 	rescue_shell
 fi
 set -- $REAL_ROOT
 unset IFS
 
-TYPE=$1
-if [ "$TYPE" = "local" ]; then
-	FSTYPE=$2
-	MOUNTFROM="/dev/${3#/dev/}"
-	echo "Executing: mount -t $FSTYPE $4 $MOUNTFROM $NEW_ROOT"
-	mount -o ro -t $FSTYPE $4 $MOUNTFROM $NEW_ROOT ||
+DTYPE="$1"
+echo "Preparing root device ($DTYPE) ..."
+
+# Compatible with the legacy syntax for LVM
+DEVPATH="$3"
+case "$DEVPATH" in
+*vg[0-9]*/lv[0-9]*)
+	DTYPE="lvm"
+        DOPTS=""
+	echo "WARNING: Please update to the new syntax:"
+	echo "    vfs.root.realroot='lvm::local:$DEVPATH:...'"
+	;;
+*)
+	DOPTS="$2"
+	;;
+esac
+
+# To configure root device located on LVM, CCD, etc.
+if [ -x "/etc/rcdev_${DTYPE}" ]; then
+	. /etc/rcdev_${DTYPE} "$DOPTS" || {
+	    echo "ERROR: Failed to prepare root device!"
 	    rescue_shell
-elif [ -x "/etc/rcmount_${TYPE}" ]; then
-	. /etc/rcmount_${TYPE} "$@" ||
-	    rescue_shell
-else
-	echo "ERROR: Unsupported root filesystem type: $TYPE."
-	rescue_shell
+	}
+	shift; shift;
 fi
 
-echo "Stopping udevd ..."
-kill $(cat /var/run/udevd.pid)
+MTYPE="$1"; shift
+echo "Mounting real root filesystem ($MTYPE) ..."
+if [ -x "/etc/rcmount_${MTYPE}" ]; then
+	. /etc/rcmount_${MTYPE} "$@" || {
+	    echo "ERROR: Failed to mount root filesystem!"
+	    rescue_shell
+	}
+else
+	echo "ERROR: Unsupported root type: $MTYPE!"
+	rescue_shell
+fi
 
 echo "Cleaning up and umounting /var ..."
 rm -rf /var/*
 umount /var
 
-echo "Mounting devfs on real root ..."
-#mount_devfs $NEW_ROOT/dev
+echo "Mounting devfs in real root ..."
 mount_null /dev $NEW_ROOT/dev

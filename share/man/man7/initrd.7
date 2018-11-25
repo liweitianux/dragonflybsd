@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 2, 2018
+.Dd October 31, 2018
 .Dt INITRD 7
 .Os
 .Sh NAME
@@ -58,10 +58,10 @@ The statically linked tools are known as the
 .Dq rescue tools
 and shipped at
 .Pa /rescue .
-The inclusion of such rescue tools makes
+The inclusion of such rescue tools enables
 .Nm
-can provide with a powerful rescue environment to fix severe problems,
-e.g., the root partition cannot be mounted.
+to provide a powerful rescue environment for fixing severe problems,
+e.g., root filesystem corruption.
 Users can also choose to boot into the rescue mode from the bootloader
 menu.
 .Pp
@@ -76,7 +76,7 @@ It is created by the
 .Dq initrd
 target of the
 .Xr build 7
-framework, and is compressed and installed at
+framework, and is installed at
 .Pa /boot/kernel/initrd.img.gz .
 The following configurations should be added to
 .Pa /boot/loader.conf
@@ -134,9 +134,11 @@ vfs.root.realroot="tcplay:<FS-TYPE>:<DEVICE-PATH>:<MAPPING-NAME>[:<OPTIONS>]"
 .Sh FILES
 .Bl -tag -width "/boot/kernel/initrd.img.gz"
 .It Pa /boot/kernel/initrd.img.gz
-Location of the compressed
+Location of the installed
 .Nm
 image.
+.It Pa /boot/loader.conf
+Configuration file for the boot loader.
 .El
 .Sh EXAMPLES
 .Bd -literal -offset indent

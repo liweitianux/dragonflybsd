@@ -1,9 +1,19 @@
 #!/bin/sh
 
-FSTYPE=$2
-MOUNTFROM="/dev/${3#/dev/}"
-VOLUME=$4
-OPTIONS=$5
+FSTYPE="$1"
+DEVICE="/dev/${2#/dev/}"
+MAPPING="$3"
+OPTIONS="$4"
+MNTOPTS="$5"
 
-tcplay -m $VOLUME -d $MOUNTFROM $OPTIONS || return 2
-mount -o ro -t $FSTYPE /dev/mapper/$VOLUME $NEW_ROOT || return 3
+echo "Mounting $FSTYPE root filesystem from tcplay volume $DEVICE ..."
+
+tcplay -d $DEVICE -m $MAPPING $OPTIONS || {
+    echo "ERROR: Failed to open $DEVICE!"
+    return 2
+}
+MOUNTFROM="/dev/mapper/$MAPPING"
+mount -o ro -t $FSTYPE $MNTOPTS $MOUNTFROM $NEW_ROOT || {
+    echo "ERROR: Failed to mount $MOUNTFROM!"
+    return 3
+}
