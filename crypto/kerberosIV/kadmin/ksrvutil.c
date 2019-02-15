@@ -18,7 +18,7 @@ this software for any purpose.  It is provided "as is" without express
 or implied warranty.
 
   */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/kadmin/ksrvutil.c,v 1.1.1.3.2.1 2003/02/14 22:37:37 nectar Exp $ */
 
 /*
  * list and update contents of srvtab files

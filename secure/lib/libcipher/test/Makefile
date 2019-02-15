@@ -2,7 +2,7 @@
 #	Hacked Makefile to compile and run the DES-certification program,
 #	but not install anything.
 #
-# $FreeBSD$
+# $FreeBSD: src/secure/lib/libcipher/test/Makefile,v 1.5 1999/08/28 01:30:21 peter Exp $
 #
 LIBCRYPT!=cd $(.CURDIR)/..; \
 	printf "xxx:\n\techo \$${.OBJDIR}/libcipher.a\n" | make -r -s -f - xxx

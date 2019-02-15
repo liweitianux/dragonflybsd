@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/libexec/telnetd/Makefile,v 1.7.2.4 2002/04/13 11:00:51 markm Exp $
 
 # Do not define -DKLUDGELINEMODE, as it does not interact well with many
 # telnet implementations.

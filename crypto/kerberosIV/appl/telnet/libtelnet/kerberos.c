@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/appl/telnet/libtelnet/kerberos.c,v 1.2.2.2 2003/02/13 21:34:35 nectar Exp $ */
 
 /*
  * Copyright (C) 1990 by the Massachusetts Institute of Technology

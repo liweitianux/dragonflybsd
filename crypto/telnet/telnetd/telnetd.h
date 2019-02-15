@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)telnetd.h	8.1 (Berkeley) 6/4/93
- * $FreeBSD$
+ * $FreeBSD: src/crypto/telnet/telnetd/telnetd.h,v 1.1.1.1.8.1 2002/04/13 10:59:09 markm Exp $
  */
 
 

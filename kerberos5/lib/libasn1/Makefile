@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/lib/libasn1/Makefile,v 1.3.2.8 2002/08/19 16:10:21 ru Exp $
 
 LIB=	asn1
 CFLAGS+=-I${KRB5DIR}/include \

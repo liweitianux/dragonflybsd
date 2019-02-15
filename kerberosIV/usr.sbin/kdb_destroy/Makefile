@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/kdb_destroy/Makefile,v 1.7.2.1 2001/04/25 09:36:04 ru Exp $
 
 PROG=		kdb_destroy
 MAN=		${KRB4DIR}/man/kdb_destroy.8

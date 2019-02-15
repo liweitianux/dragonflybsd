@@ -5,7 +5,7 @@
  * For copying and distribution information, please see the file
  * <mit-copyright.h>.
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/server/kerberos.c,v 1.2.2.3 2003/02/14 22:37:37 nectar Exp $ */
 
 #include "config.h"
 #include "protos.h"

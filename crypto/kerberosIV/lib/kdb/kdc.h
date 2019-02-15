@@ -1,6 +1,6 @@
 /*
  * $Id: kdc.h,v 1.8 1997/04/01 03:59:05 assar Exp $
- * $FreeBSD$
+ * $FreeBSD: src/crypto/kerberosIV/lib/kdb/kdc.h,v 1.3 1999/09/19 21:56:06 markm Exp $
  *
  * Copyright 1987, 1988 by the Massachusetts Institute of Technology. 
  *

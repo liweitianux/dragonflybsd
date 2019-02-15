@@ -32,7 +32,7 @@
  */
 
 /* $Id: ftp_locl.h,v 1.34 1999/12/02 16:58:29 joda Exp $ */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/appl/ftp/ftp/ftp_locl.h,v 1.2.2.1 2003/02/13 21:34:35 nectar Exp $ */
 
 #ifndef __FTP_LOCL_H__
 #define __FTP_LOCL_H__

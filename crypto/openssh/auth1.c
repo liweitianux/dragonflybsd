@@ -11,7 +11,7 @@
 
 #include "includes.h"
 RCSID("$OpenBSD: auth1.c,v 1.44 2002/09/26 11:38:43 markus Exp $");
-RCSID("$FreeBSD$");
+RCSID("$FreeBSD: src/crypto/openssh/auth1.c,v 1.3.2.10 2003/04/07 09:56:46 des Exp $");
 
 #include "xmalloc.h"
 #include "rsa.h"

@@ -24,7 +24,7 @@
  */
 #include "includes.h"
 RCSID("$OpenBSD: auth2-chall.c,v 1.20 2002/06/30 21:59:45 deraadt Exp $");
-RCSID("$FreeBSD$");
+RCSID("$FreeBSD: src/crypto/openssh/auth2-chall.c,v 1.1.1.1.2.3 2003/02/03 17:31:06 des Exp $");
 
 #include "ssh2.h"
 #include "auth.h"

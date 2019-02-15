@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/usr.sbin/k5stash/Makefile,v 1.4.2.3 2002/07/25 09:33:16 ru Exp $
 
 PROG=		k5stash
 SRCS=		kstash.c hdb_err.h

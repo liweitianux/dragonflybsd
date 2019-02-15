@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/4/93
- * $FreeBSD$
+ * $FreeBSD: src/crypto/telnet/telnetd/pathnames.h,v 1.1.1.1.8.2 2002/04/13 10:59:08 markm Exp $
  */
 
 #if BSD > 43

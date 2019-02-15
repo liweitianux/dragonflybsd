@@ -8,7 +8,7 @@
  * This routine changes the Kerberos encryption keys for principals,
  * i.e., users or services. 
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/admin/kdb_edit.c,v 1.1.1.3.2.1 2003/02/14 22:37:37 nectar Exp $ */
 
 /*
  * exit returns 	 0 ==> success -1 ==> error 

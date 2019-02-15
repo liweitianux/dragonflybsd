@@ -1,5 +1,5 @@
 /*	$OpenBSD: includes.h,v 1.17 2002/01/26 16:44:22 stevesk Exp $	*/
-/*	$FreeBSD$	*/
+/*	$FreeBSD: src/crypto/openssh/includes.h,v 1.2.2.7 2003/02/03 17:31:06 des Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

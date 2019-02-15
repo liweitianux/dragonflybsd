@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/appl/kauth/kauthd.c,v 1.1.1.3.2.1 2000/07/20 14:04:33 assar Exp $ */
 
 /*
  * Copyright (c) 1995, 1996, 1997, 1998 Kungliga Tekniska Högskolan

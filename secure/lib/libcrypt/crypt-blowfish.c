@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: src/secure/lib/libcrypt/crypt-blowfish.c,v 1.1.2.1 2001/05/24 12:20:03 markm Exp $
  */
 
 /* This password hashing algorithm was designed by David Mazieres

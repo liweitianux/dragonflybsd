@@ -32,7 +32,7 @@
  */
 
 /* $Id: kadm_locl.h,v 1.31 1999/12/02 16:58:36 joda Exp $ */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/kadmin/kadm_locl.h,v 1.2.2.1 2003/02/13 21:34:35 nectar Exp $ */
 
 #include "config.h"
 #include "protos.h"

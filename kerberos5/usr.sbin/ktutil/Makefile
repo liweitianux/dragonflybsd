@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/usr.sbin/ktutil/Makefile,v 1.3.2.4 2002/07/25 09:33:16 ru Exp $
 
 PROG=		ktutil
 SRCS=		\

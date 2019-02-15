@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/kip/Makefile,v 1.5 2000/02/24 20:57:01 markm Exp $
 
 PROG=		kip
 NOMAN=		true

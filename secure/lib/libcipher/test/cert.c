@@ -3,7 +3,7 @@
  * shipped with UFC-crypt which is apparently derived from one distributed
  * with Phil Karns PD DES package.
  *
- * $FreeBSD$
+ * $FreeBSD: src/secure/lib/libcipher/test/cert.c,v 1.5 1999/08/28 01:30:22 peter Exp $
  */
 
 #include <stdio.h>

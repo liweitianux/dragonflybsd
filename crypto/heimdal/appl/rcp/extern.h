@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
- * $FreeBSD$
+ * $FreeBSD: src/crypto/heimdal/appl/rcp/extern.h,v 1.1.1.1.2.3 2002/09/20 10:50:15 nectar Exp $
  */
 
 typedef struct {

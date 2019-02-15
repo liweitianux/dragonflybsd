@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/libexec/ipropd-master/Makefile,v 1.3.2.3 2002/09/23 14:00:44 nectar Exp $
 
 PROG=		ipropd-master
 SRCS=		ipropd_master.c iprop.h kadm5_locl.h kadm5_err.h hdb_err.h

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/lib/libkadm5clnt/Makefile,v 1.1.1.1.2.1 2001/03/04 13:49:45 markm Exp $
 
 LIB=	kadm5clnt
 CFLAGS+=-I${KRB5DIR}/include \

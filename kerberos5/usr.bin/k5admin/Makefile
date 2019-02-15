@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/usr.bin/k5admin/Makefile,v 1.4.2.2 2002/07/25 09:33:15 ru Exp $
 
 PROG=		k5admin
 SRCS=		\

@@ -32,7 +32,7 @@
  */
 
 /* $Id: kafs.h,v 1.32 1999/12/02 16:58:40 joda Exp $ */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/lib/kafs/kafs.h,v 1.4 2000/01/09 08:53:34 markm Exp $ */
 
 #ifndef __KAFS_H
 #define __KAFS_H

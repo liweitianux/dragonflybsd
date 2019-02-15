@@ -32,7 +32,7 @@
  *
  *	@(#)telnetd.h	8.1 (Berkeley) 6/4/93
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/appl/telnet/telnetd/telnetd.h,v 1.2.2.2 2003/02/13 21:34:35 nectar Exp $ */
 
 
 #include <config.h>

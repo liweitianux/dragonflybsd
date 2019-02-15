@@ -33,7 +33,7 @@
 
 #include <sys/cdefs.h>
 
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: src/crypto/telnet/telnet/commands.c,v 1.12.2.7 2003/04/23 07:16:32 ru Exp $");
 
 #ifndef lint
 static const char sccsid[] = "@(#)commands.c	8.4 (Berkeley) 5/30/95";

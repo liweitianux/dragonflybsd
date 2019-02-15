@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.bin/kauth/Makefile,v 1.5.2.1 2001/04/25 09:36:01 ru Exp $
 
 PROG=		kauth
 MAN=		${KRB4DIR}/man/kauth.1

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.bin/klist/Makefile,v 1.6.2.1 2001/04/25 09:36:03 ru Exp $
 
 PROG=		klist
 MAN=		${KRB4DIR}/man/klist.1

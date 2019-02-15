@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)defines.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD$
+ * $FreeBSD: src/crypto/telnet/telnet/defines.h,v 1.1.1.1.8.1 2002/04/13 10:59:08 markm Exp $
  */
 
 #define	settimer(x)	clocks.x = clocks.system++

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD$
+# $FreeBSD: src/release/i386/dokern.sh,v 1.58.2.7 2003/04/04 17:10:31 ru Exp $
 #
 
 sed	-e '/pty/d' \

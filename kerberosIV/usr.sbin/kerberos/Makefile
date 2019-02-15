@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/kerberos/Makefile,v 1.7.2.1 2001/04/25 09:36:08 ru Exp $
 
 PROG=		kerberos
 MAN=		${KRB4DIR}/man/kerberos.1

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/ext_srvtab/Makefile,v 1.7.2.1 2001/04/25 09:36:03 ru Exp $
 
 PROG=		ext_srvtab
 MAN=		${KRB4DIR}/man/ext_srvtab.8

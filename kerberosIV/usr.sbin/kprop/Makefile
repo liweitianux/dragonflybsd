@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/kprop/Makefile,v 1.6.2.1 2001/04/25 09:36:08 ru Exp $
 
 PROG=		kprop
 MAN=		${KRB4DIR}/man/kprop.8

@@ -2,7 +2,7 @@
 #ifndef __krb5_private_h__
 #define __krb5_private_h__
 
-/* $FreeBSD$ */
+/* $FreeBSD: src/kerberos5/include/krb5-private.h,v 1.1.1.1.2.3 2002/09/01 04:22:00 nectar Exp $ */
 
 #include <stdarg.h>
 void

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/lib/libsl/Makefile,v 1.3.2.1 2002/07/19 18:46:25 ru Exp $
 
 LIB=		sl
 INTERNALLIB=	YES

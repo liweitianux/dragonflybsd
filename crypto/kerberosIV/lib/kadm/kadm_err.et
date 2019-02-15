@@ -7,7 +7,7 @@
 #
 # Kerberos administration server error table
 #
-# $FreeBSD$
+# $FreeBSD: src/crypto/kerberosIV/lib/kadm/kadm_err.et,v 1.2 1999/09/19 21:56:05 markm Exp $
 #
 	et	kadm
 

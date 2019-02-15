@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.bin/kinit/Makefile,v 1.7.2.1 2001/04/25 09:36:02 ru Exp $
 
 PROG=		kinit
 MAN=		${KRB4DIR}/man/kinit.1

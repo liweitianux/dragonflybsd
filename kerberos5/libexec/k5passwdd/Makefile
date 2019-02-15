@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/libexec/k5passwdd/Makefile,v 1.4.2.4 2002/09/01 04:22:02 nectar Exp $
 
 PROG=		k5passwdd
 SRCS=		kpasswdd.c krb5_err.h heim_err.h hdb_err.h \

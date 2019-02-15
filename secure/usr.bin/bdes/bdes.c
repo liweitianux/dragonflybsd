@@ -49,7 +49,7 @@ static char copyright[] =
 static char sccsid[] = "@(#)bdes.c	8.1 (Berkeley) 6/6/93";
 #else
 static const char rcsid[] =
- "$FreeBSD$";
+ "$FreeBSD: src/secure/usr.bin/bdes/bdes.c,v 1.3.2.1 2000/09/22 09:42:03 kris Exp $";
 #endif
 #endif /* not lint */
 

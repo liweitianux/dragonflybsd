@@ -1,5 +1,5 @@
 /*	$OpenBSD: rijndael.c,v 1.14 2002/07/10 17:53:54 deraadt Exp $ */
-/*	$FreeBSD$ */
+/*	$FreeBSD: src/crypto/openssh/rijndael.c,v 1.1.1.1.2.4 2003/02/03 17:31:07 des Exp $ */
 
 /**
  * rijndael-alg-fst.c

@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/kadmin/ksrvutil_get.c,v 1.1.1.3.2.1 2003/02/14 22:37:37 nectar Exp $ */
 
 #include "kadm_locl.h"
 #include "ksrvutil.h"

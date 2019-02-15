@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/usr.bin/krb5-config/Makefile,v 1.1.2.8 2002/12/01 17:45:32 nectar Exp $
 
 SCRIPTS=	krb5-config
 MAN=		krb5-config.1

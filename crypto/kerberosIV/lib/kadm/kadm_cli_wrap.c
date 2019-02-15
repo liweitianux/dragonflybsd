@@ -30,7 +30,7 @@ or implied warranty.
 #include "kadm_locl.h"
 
 /* RCSID("$Id: kadm_cli_wrap.c,v 1.27 1999/09/16 20:41:46 assar Exp $");*/
-RCSID("$FreeBSD$");
+RCSID("$FreeBSD: src/crypto/kerberosIV/lib/kadm/kadm_cli_wrap.c,v 1.1.1.3.2.2 2003/02/13 21:34:35 nectar Exp $");
 
 static Kadm_Client client_parm;
 

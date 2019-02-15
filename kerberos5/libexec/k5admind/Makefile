@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/libexec/k5admind/Makefile,v 1.4.2.3 2002/09/23 14:00:48 nectar Exp $
 
 PROG=		k5admind
 SRCS=		kadmind.c server.c kadm_conn.c \

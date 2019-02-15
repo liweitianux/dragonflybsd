@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/ksrvutil/Makefile,v 1.7.2.1 2001/04/25 09:36:08 ru Exp $
 
 PROG=		ksrvutil
 MAN=		${KRB4DIR}/man/ksrvutil.8

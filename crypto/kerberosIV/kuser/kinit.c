@@ -16,7 +16,7 @@
  *   -l[ifetime]
  *   -p
  *
- * $FreeBSD$
+ * $FreeBSD: src/crypto/kerberosIV/kuser/kinit.c,v 1.5 1999/09/19 21:56:05 markm Exp $
  */
 
 #include "kuser_locl.h"

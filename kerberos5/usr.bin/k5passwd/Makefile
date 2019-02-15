@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/usr.bin/k5passwd/Makefile,v 1.4.2.3 2002/07/25 09:33:16 ru Exp $
 
 PROG=		k5passwd
 SRCS=		kpasswd.c krb5_err.h heim_err.h k524_err.h

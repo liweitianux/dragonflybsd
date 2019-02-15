@@ -2,7 +2,7 @@
 /* include/config.h.  Generated automatically by configure.  */
 /* include/config.h.in.  Generated automatically from configure.in by autoheader.  */
 
-/* $FreeBSD$ */
+/* $FreeBSD: src/kerberosIV/include/config.h,v 1.4 2000/01/09 08:59:33 markm Exp $ */
 
 #define KRB4 1
 

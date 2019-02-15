@@ -32,7 +32,7 @@
  */
 
 /* $Id: adm_locl.h,v 1.17 1999/12/02 16:58:27 joda Exp $ */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/admin/adm_locl.h,v 1.2.2.1 2003/02/13 21:34:34 nectar Exp $ */
 
 #ifndef __adm_locl_h
 #define __adm_locl_h

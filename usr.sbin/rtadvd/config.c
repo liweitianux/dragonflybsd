@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: src/usr.sbin/rtadvd/config.c,v 1.3.2.5 2003/04/22 09:40:57 suz Exp $
  */
 
 #include <sys/param.h>

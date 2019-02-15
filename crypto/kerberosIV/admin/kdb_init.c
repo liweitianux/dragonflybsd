@@ -7,7 +7,7 @@
  * program to initialize the database,  reports error if database file
  * already exists. 
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/admin/kdb_init.c,v 1.1.1.3.2.1 2003/02/14 22:37:37 nectar Exp $ */
 
 #include "adm_locl.h"
 

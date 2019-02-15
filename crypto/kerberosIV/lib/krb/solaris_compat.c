@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/lib/krb/solaris_compat.c,v 1.1.1.2.2.1 2003/02/13 21:34:36 nectar Exp $ */
 
 #include "krb_locl.h"
 

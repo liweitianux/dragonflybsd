@@ -30,7 +30,7 @@
 
 #include <sys/cdefs.h>
 
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/sra.c,v 1.1.2.7 2002/05/16 08:46:49 markm Exp $");
 
 #ifdef	SRA
 #ifdef	ENCRYPTION

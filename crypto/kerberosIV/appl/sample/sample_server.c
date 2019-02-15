@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/appl/sample/sample_server.c,v 1.1.1.2.2.1 2000/07/20 14:04:34 assar Exp $ */
 
 /*
  *

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/Makefile.inc,v 1.5.2.5 2002/07/25 09:33:14 ru Exp $
 
 DISTRIBUTION?=	krb5
 

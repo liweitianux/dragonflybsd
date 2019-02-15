@@ -39,7 +39,7 @@
  */
 
 /* $Id: roken.h.in,v 1.125 1999/12/02 16:58:52 joda Exp $ */
-/* $FreeBSD$ */
+/* $FreeBSD: src/kerberosIV/include/roken.h,v 1.2 2000/01/09 08:59:34 markm Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>

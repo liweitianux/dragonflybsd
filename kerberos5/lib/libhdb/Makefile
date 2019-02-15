@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/lib/libhdb/Makefile,v 1.2.2.5 2002/08/19 16:10:22 ru Exp $
 
 LIB=	hdb
 CFLAGS+=-I${KRB5DIR}/include \

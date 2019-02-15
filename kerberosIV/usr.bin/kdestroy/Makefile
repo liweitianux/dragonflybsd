@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.bin/kdestroy/Makefile,v 1.6.2.1 2001/04/25 09:36:02 ru Exp $
 
 PROG=		kdestroy
 MAN=		${KRB4DIR}/man/kdestroy.1

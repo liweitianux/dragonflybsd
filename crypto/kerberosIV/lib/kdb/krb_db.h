@@ -1,6 +1,6 @@
 /*
  * $Id: krb_db.h,v 1.15 1996/12/17 20:34:32 assar Exp $ 
- * $FreeBSD$ 
+ * $FreeBSD: src/crypto/kerberosIV/lib/kdb/krb_db.h,v 1.3 1999/09/19 21:56:06 markm Exp $ 
  *
  * Copyright 1987, 1988 by the Massachusetts Institute of Technology. 
  *

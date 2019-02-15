@@ -29,7 +29,7 @@
 
 #include "includes.h"
 RCSID("$OpenBSD: auth-krb5.c,v 1.9 2002/09/09 06:48:06 itojun Exp $");
-RCSID("$FreeBSD$");
+RCSID("$FreeBSD: src/crypto/openssh/auth-krb5.c,v 1.2.2.6 2003/02/03 17:31:06 des Exp $");
 
 #include "ssh.h"
 #include "ssh1.h"

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/lib/libtelnet/Makefile,v 1.14.2.4 2003/04/24 19:13:59 nectar Exp $
 
 LIB=		telnet
 

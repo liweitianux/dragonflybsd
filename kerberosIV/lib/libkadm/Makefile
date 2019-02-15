@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/lib/libkadm/Makefile,v 1.5.2.1 2002/07/22 14:21:48 ru Exp $
 
 LIB=		kadm
 CFLAGS+=	-I${KRB4DIR}/include \

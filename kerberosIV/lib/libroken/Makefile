@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/lib/libroken/Makefile,v 1.6.2.2 2002/07/19 18:46:25 ru Exp $
 
 LIB=		roken
 INTERNALLIB=	YES

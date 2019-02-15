@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/secure/Makefile,v 1.16.2.1 2002/07/25 09:33:13 ru Exp $
 
 # lib must be first, or it will not work.  This is because we reference
 # the lib's in the directory where they are built from the binaries we

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/usr.bin/telnet/Makefile,v 1.16.2.2 2003/04/24 19:14:00 nectar Exp $
 
 PROG=		telnet
 

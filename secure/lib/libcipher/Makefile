@@ -1,5 +1,5 @@
 #
-# $FreeBSD$
+# $FreeBSD: src/secure/lib/libcipher/Makefile,v 1.10.2.1 2002/07/19 18:46:27 ru Exp $
 #
 
 LIB=		cipher

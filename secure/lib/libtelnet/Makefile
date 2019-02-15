@@ -1,4 +1,4 @@
-#	$FreeBSD$
+#	$FreeBSD: src/secure/lib/libtelnet/Makefile,v 1.17.2.7 2002/07/22 14:21:51 ru Exp $
 
 LIB=		telnet
 

@@ -30,7 +30,7 @@
  */
 
 #include "includes.h"
-RCSID("$FreeBSD$");
+RCSID("$FreeBSD: src/crypto/openssh/auth2-pam-freebsd.c,v 1.1.2.6 2003/04/07 09:56:46 des Exp $");
 
 #ifdef USE_PAM
 #include <security/pam_appl.h>

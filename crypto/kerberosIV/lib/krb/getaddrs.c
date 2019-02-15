@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: src/crypto/kerberosIV/lib/krb/getaddrs.c,v 1.2.2.1 2001/03/04 12:52:49 markm Exp $
  */
 
 #include "krb_locl.h"

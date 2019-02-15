@@ -30,12 +30,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $FreeBSD$
+ * $FreeBSD: src/crypto/telnet/libtelnet/enc_des.c,v 1.3.2.2 2003/02/14 22:38:13 nectar Exp $
  */
 
 #include <sys/cdefs.h>
 
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: src/crypto/telnet/libtelnet/enc_des.c,v 1.3.2.2 2003/02/14 22:38:13 nectar Exp $");
 
 #ifndef lint
 static const char sccsid[] = "@(#)enc_des.c	8.3 (Berkeley) 5/30/95";

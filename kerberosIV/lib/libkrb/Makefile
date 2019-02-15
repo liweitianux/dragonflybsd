@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/lib/libkrb/Makefile,v 1.7.2.2 2002/07/22 14:21:48 ru Exp $
 
 LIB=		krb
 CFLAGS+=	-I${KRB4DIR}/include \

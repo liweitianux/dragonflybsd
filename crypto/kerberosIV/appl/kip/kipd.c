@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: src/crypto/kerberosIV/appl/kip/kipd.c,v 1.1.1.3.2.2 2001/03/04 12:52:43 markm Exp $ */
 
 /*
  * Copyright (c) 1995 - 2000 Kungliga Tekniska Högskolan

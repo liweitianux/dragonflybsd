@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/lib/libacl/Makefile,v 1.4.2.2 2002/07/22 14:21:48 ru Exp $
 
 LIB=		acl
 CFLAGS+=	-I${KRB4DIR}/include \

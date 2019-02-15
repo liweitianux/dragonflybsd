@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberos5/libexec/hpropd/Makefile,v 1.3.2.3 2002/07/25 09:33:15 ru Exp $
 
 PROG=		hpropd
 SRCS=		hpropd.c hprop.h hdb_err.h

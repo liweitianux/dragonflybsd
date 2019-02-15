@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: src/kerberosIV/usr.sbin/kadmind/Makefile,v 1.5.2.1 2001/04/25 09:36:04 ru Exp $
 
 PROG=		kadmind
 MAN=		${KRB4DIR}/man/kadmind.8

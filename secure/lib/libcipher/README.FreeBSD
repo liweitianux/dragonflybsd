@@ -1,4 +1,4 @@
-$FreeBSD$
+$FreeBSD: src/secure/lib/libcipher/README.FreeBSD,v 1.4 1999/08/28 01:30:20 peter Exp $
 
 This is FreeSec package for NetBSD,  unchanged for
 FreeBSD, except for the Makefile.

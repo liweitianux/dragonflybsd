@@ -1,5 +1,5 @@
 # $Id: configure.ac,v 1.89 2002/09/26 00:38:47 tim Exp $
-# $FreeBSD$
+# $FreeBSD: src/crypto/openssh/configure.ac,v 1.4.2.2 2003/02/03 17:31:06 des Exp $
 
 AC_INIT
 AC_CONFIG_SRCDIR([ssh.c])
