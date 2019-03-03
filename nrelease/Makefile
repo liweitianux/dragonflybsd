@@ -5,7 +5,7 @@
 # Optional targets may be specified which set make variables which enhance
 # the build in various ways.
 #
-gui nopkgs:
+gui nopkgs binpkgs:
 
 #########################################################################
 #				SETUP					#
@@ -222,7 +222,7 @@ customizeiso:
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 
-# Install packages by building from dports.
+# Install packages by using pkg(8) or building from dports.
 #
 pkgs:
 .if !empty(DPORTS_PACKAGES)
@@ -230,6 +230,12 @@ pkgs:
 	-@umount ${ISOROOT}/dev
 	mount_null /dev ${ISOROOT}/dev
 
+.if make(binpkgs)
+	${CHROOT_CMD} "cd /usr && make pkg-bootstrap-force"
+	${CHROOT_CMD} "pkg update"
+	${CHROOT_CMD} "yes | pkg install ${DPORTS_PACKAGES}"
+
+.else  # !make(binpkgs)
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/obj/dports
@@ -258,6 +264,7 @@ pkgs:
 	rm -rf ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/distfiles
 	rm -rf ${ISOROOT}/usr/obj/dports
+.endif  # make(binpkgs)
 
 	# Update the locate(8) and whatis(1) databases, allow ISODIR
 	# to be on tmpfs (fails to create locate database then)
@@ -393,6 +400,7 @@ help all:
 	@echo ""
 	@echo "Optional targets:"
 	@echo "  nopkgs      - do not install any packages"
+	@echo "  binpkgs     - use binary packages with pkg(8)"
 	@echo "  gui         - do a GUI release"
 	@echo ""
 	@echo "Variables:"
