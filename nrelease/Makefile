@@ -11,6 +11,8 @@ gui nopkgs binpkgs:
 #				SETUP					#
 #########################################################################
 
+SRCDIR=		${.CURDIR}/..
+
 DPORTS_PATH?=	/usr/dports
 ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
@@ -18,7 +20,7 @@ GITURL_SRC?=	git://git.dragonflybsd.org/dragonfly.git
 GITURL_DPORTS?=	git://mirror-master.dragonflybsd.org/dports.git
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
-GITREV!=	sh ${.CURDIR}/../tools/gitrev.sh
+GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
 
 # The label/name of the disklabel64(5) slice in the ".img" file.  This is
 # used to identify the USB device with DragonFly installation image, avoiding
@@ -56,7 +58,7 @@ DPORTS_OPTIONS.devel_git+=	-DWITH_GUI
 .else
 DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
 .endif
-.endif
+.endif  # !make(nopkgs)
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `customizeiso'
@@ -96,7 +98,7 @@ DPORTS_PACKAGES+=	x11/xorg \
 .endif
 
 ROOTSKELS+=		${.CURDIR}/gui
-.endif
+.endif  # make(gui)
 
 #########################################################################
 #				BASE ISO TARGETS			#
@@ -141,39 +143,39 @@ check:
 	@echo "Using ${DPORTS_PATH} as the dports tree."
 
 buildworld1 buildworld2:
-	cd ${.CURDIR}/..; \
-	${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-		make -j ${MAKE_JOBS} -DWANT_INSTALLER ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	( cd ${SRCDIR}; \
+		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
+			make -j ${MAKE_JOBS} -DWANT_INSTALLER \
+			${.TARGET:C/build(.*)2/quick\1/:C/1//} )
 
 buildkernel1 buildkernel2:
-	cd ${.CURDIR}/..; \
-	${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-		make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	( cd ${SRCDIR}; \
+		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
+			make -j ${MAKE_JOBS} \
+			${.TARGET:C/build(.*)2/quick\1/:C/1//} )
 
 # Unconditionally clean out ${ISOROOT} so a previous img build
 # does not blow up a future quick iso build
-#
-# We install with INSTALLSTRIPPEDMODULES to make things fit into the ISO.
-# We leave the kernel's debug variables intact.
 #
 buildiso:
 	-chflags -R noschg ${ISOROOT}
 	rm -rf ${ISOROOT}
 	mkdir -p ${ISOROOT}
-	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
+	( cd ${SRCDIR}; \
+		make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
 	# Do not mess with any /usr/obj directories not related to
 	# buildworld, buildkernel, or nrelease.
-	( cd ${.CURDIR}/../etc && \
+	( cd ${SRCDIR}/etc && \
 		tmpdir=`mktemp -d -t nrelease` && \
 		MAKEOBJDIRPREFIX=$${tmpdir} \
-			make -m ${.CURDIR}/../share/mk \
+			make -m ${SRCDIR}/share/mk \
 			DESTDIR=${ISOROOT} distribution && \
 		rm -rf $${tmpdir} )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
-	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} reinstallkernel )
+	( cd ${SRCDIR}; make DESTDIR=${ISOROOT} reinstallkernel )
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
-	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
+	mtree -deU -f ${SRCDIR}/etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 	${CHROOT_CMD} "rcrestart ldconfig"
 
@@ -191,7 +193,7 @@ srcs:
 	( cd ${ISOROOT}/usr && \
 		make src-create-shallow GITURL_SRC=${GITURL_SRC} )
 .else
-	( cd ${.CURDIR}/.. && \
+	( cd ${SRCDIR} && \
 		tar --exclude .git -s '/^\./src/' -cf - \
 			./Makefile ./Makefile.inc1 \
 			./crypto/libressl/include ./sys | \
@@ -219,7 +221,7 @@ customizeiso:
 		     periodic/security/Makefile	\
 		     periodic/weekly/Makefile	\
 		     periodic/monthly/Makefile
-	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
+	cp -R ${SRCDIR}/etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 
 # Install packages by using pkg(8) or building from dports.
