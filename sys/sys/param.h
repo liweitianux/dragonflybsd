@@ -245,9 +245,10 @@
  * 600501 - add fopencookie(3)
  * 600502 - WIFSIGNALED(x) excludes SIGCONT
  * 600503 - kldstat(2) supports module's full path
+ * 600504 - add SO_USER_COOKIE to setsockopt(2)/getsockopt(2)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600503	/* propagated to newvers */
+#define __DragonFly_version 600504	/* propagated to newvers */
 
 #include <sys/_null.h>
 
