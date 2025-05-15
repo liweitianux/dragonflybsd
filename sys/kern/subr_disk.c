@@ -406,6 +406,8 @@ disk_probe(struct disk *dp, int reprobe)
 			    dp->d_slice->dss_nslices == BASE_SLICE) {
 				sp->ds_size = info->d_media_blocks;
 				sp->ds_reserved = 0;
+			} else {
+				continue;
 			}
 		} else {
 			sno = i - 1;
@@ -479,13 +481,12 @@ disk_probe(struct disk *dp, int reprobe)
 		 * Probe appropriate slices for a disklabel
 		 *
 		 * XXX slice type 1 used by our gpt probe code.
-		 * XXX slice type 0 used by mbr compat slice.
 		 */
-		if (sp->ds_type == DOSPTYP_386BSD ||
+		if (i == COMPATIBILITY_SLICE ||
+		    sp->ds_type == DOSPTYP_386BSD ||
 		    sp->ds_type == DOSPTYP_NETBSD ||
 		    sp->ds_type == DOSPTYP_OPENBSD ||
 		    sp->ds_type == DOSPTYP_DFLYBSD ||
-		    sp->ds_type == 0 ||
 		    sp->ds_type == 1) {
 			if (dp->d_slice->dss_first_bsd_slice == 0)
 				dp->d_slice->dss_first_bsd_slice = i;
