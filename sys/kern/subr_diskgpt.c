@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -78,6 +78,8 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	uint32_t table_blocks;
 	int i = 0, j;
 	const char *dname;
+
+	error = 0;
 
 	/*
 	 * The GPT starts in sector 1.
@@ -162,7 +164,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	 * it with a maximal one (128 slices + special slices).  Well,
 	 * really there is only one special slice (the WHOLE_DISK_SLICE)
 	 * since we use the compatibility slice for s0, but don't quibble.
-	 * 
+	 *
 	 */
 	kfree(*sspp, M_DEVBUF);
 	ssp = *sspp = dsmakeslicestruct(BASE_SLICE+128, info);
@@ -212,7 +214,6 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	}
 	ssp->dss_nslices = BASE_SLICE + i;
 
-	error = 0;
 done:
 	if (bp1) {
 		bp1->b_flags |= B_INVAL | B_AGE;
@@ -222,8 +223,6 @@ done:
 		bp2->b_flags |= B_INVAL | B_AGE;
 		relpbuf(bp2, NULL);
 	}
-	if (error == EINVAL)
-		error = 0;
 	return (error);
 }
 
