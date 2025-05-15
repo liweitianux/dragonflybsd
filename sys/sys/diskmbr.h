@@ -44,7 +44,7 @@
 
 /*
  * NOTE: DragonFly BSD had been using 0xA5 forever but after many years
- *	 we're finally shifting to our own as A5 causes conflicts in grub.
+ *	 we're finally shifting to our own as A5 causes conflicts in GRUB.
  */
 #define	DOSPTYP_DFLYBSD	0x6c	/* DragonFly BSD partition type */
 #define	DOSPTYP_386BSD	0xa5	/* 386BSD partition type */
