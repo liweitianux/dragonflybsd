@@ -259,4 +259,8 @@ gpt_setslice(const char *sname, struct disk_info *info, struct diskslice *sp,
 	sp->ds_type_uuid = sent->ent_type;
 	sp->ds_stor_uuid = sent->ent_uuid;
 	sp->ds_reserved = 0;	/* no reserved sectors */
+
+	/* Copy the gpt_ent struct to store the entry name/label. */
+	sp->ds_gptent = kmalloc(sizeof(*sent), M_DEVBUF, M_WAITOK | M_ZERO);
+	bcopy(sent, sp->ds_gptent, sizeof(*sent));
 }

@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -57,7 +57,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.22 2007/06/19 06:07:51 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -123,6 +122,8 @@
 #define	MAXPARTITIONS	16
 #endif
 
+struct gpt_ent;
+
 /*
  * diskslice structure - slices up the disk and indicates where the
  * BSD labels are, if any.
@@ -154,6 +155,7 @@ struct diskslice {
 					/* devs open */
 	u_char		ds_wlabel;	/* nonzero if label is writable */
 	int		ds_ttlopens;	/* total opens, incl slice & raw */
+	struct gpt_ent	*ds_gptent;	/* GPT entry info of this slice */
 };
 
 #define DSF_REPROBE	0x0001		/* sniffer wants us to reprobe */
@@ -212,7 +214,7 @@ struct partinfo {
 	 * partitions.  If not known, they will be set to a nil uuid.
 	 *
 	 * fstype_uuid represents the slice or partition type, e.g.
-	 * like GPT_ENT_TYPE_DRAGONFLY_DISKLABEL32.  If not nil,
+	 * like GPT_ENT_TYPE_DRAGONFLY_LABEL64.  If not nil,
 	 * storage_uuid uniquely identifies the physical storage.
 	 */
 	struct uuid	fstype_uuid;
