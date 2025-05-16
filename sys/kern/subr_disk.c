@@ -90,6 +90,7 @@
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/disk.h>
+#include <sys/gpt.h>
 #include <sys/kerneldump.h>
 #include <sys/malloc.h>
 #include <machine/md_var.h>
@@ -487,6 +488,38 @@ disk_probe(struct disk *dp, int reprobe)
 			if (dp->d_slice->dss_first_bsd_slice == 0)
 				dp->d_slice->dss_first_bsd_slice = i;
 			disk_probe_slice(dp, ndev, i, reprobe);
+		}
+
+		/*
+		 * For a GPT partition, create an alias if it has a label.
+		 */
+		if (sp->ds_gptent != NULL) {
+			char partlabel[NELEM(sp->ds_gptent->ent_name) + 1];
+			uint16_t ch;
+			size_t i;
+
+			for (i = 0; i < NELEM(sp->ds_gptent->ent_name); i++) {
+				ch = sp->ds_gptent->ent_name[i];
+				if (ch <= 0x7F)
+					partlabel[i] = (char)(ch & 0x7F);
+				else
+					partlabel[i] = '_';
+			}
+			partlabel[i] = 0;
+			disk_cleanname(partlabel);
+
+			/*
+			 * Don't reuse the "by-label/" path to avoid
+			 * interference with disklabel's packname in
+			 * disk_probe_slice().
+			 */
+			destroy_dev_alias(ndev, "slice-by-label/*");
+			if (partlabel[0] != 0)
+				make_dev_alias(ndev, "slice-by-label/%s",
+					       partlabel);
+
+			kfree(sp->ds_gptent, M_DEVBUF);
+			sp->ds_gptent = NULL;
 		}
 	}
 	dsgone(&osp);
