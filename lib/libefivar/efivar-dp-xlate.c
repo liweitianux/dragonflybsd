@@ -292,7 +292,7 @@ errout:
  *
  * Extract the path from the File path node(s). translate any \ file separators
  * to /. Append the result to the mount point. Copy the resulting path into
- * *path.  Stat that path. If it is not found, return the errorr from stat.
+ * *path.  Stat that path. If it is not found, return the error from stat.
  *
  * Finally, check to make sure the resulting path is still on the same
  * device. If not, return ENODEV.
@@ -390,7 +390,7 @@ efivar_device_path_to_unix_path(const_efidp dp, char **dev, char **relpath, char
  *		return ENXIO
  *	Create a media device path node.
  *	append the relative path from the mountpoint to the media device node
- * 		as a file path.
+ *		as a file path.
  *
  * For paths matching the second form:
  *	find the EFI partition corresponding to the root fileystem.
@@ -637,7 +637,7 @@ int
 efivar_unix_path_to_device_path(const char *path, efidp *dp)
 {
 	char *modpath = NULL, *cp;
-	int rv = ENOMEM;
+	int rv;
 
 	/*
 	 * Fail early for clearly bogus things
@@ -651,7 +651,8 @@ efivar_unix_path_to_device_path(const char *path, efidp *dp)
 	 */
 	modpath = strdup(path);
 	if (modpath == NULL)
-		goto out;
+		return (ENOMEM);
+
 	for (cp = modpath; *cp; cp++)
 		if (*cp == '\\')
 			*cp = '/';
@@ -663,8 +664,6 @@ efivar_unix_path_to_device_path(const char *path, efidp *dp)
 	else						/* Handle /a/b/c */
 		rv = path_to_dp(modpath, dp);
 
-out:
 	free(modpath);
-
 	return (rv);
 }
