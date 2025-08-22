@@ -35,8 +35,6 @@
 
 #include <uuid.h>
 
-int	parse_uuid(const char *, uuid_t *);
-
 struct mbr_part {
 	uint8_t		part_flag;		/* bootstrap flags */
 	uint8_t		part_shd;		/* starting head */
@@ -70,6 +68,7 @@ void	gpt_close(int);
 int	gpt_open(const char *);
 void*	gpt_read(int, off_t, size_t);
 int	gpt_write(int, map_t *);
+int	parse_uuid(const char *, uuid_t *);
 
 uint8_t *utf16_to_utf8(uint16_t *);
 void	utf8_to_utf16(const uint8_t *, uint16_t *, size_t);

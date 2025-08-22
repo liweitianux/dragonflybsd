@@ -223,8 +223,7 @@ create(int fd)
 	}
 }
 
-static
-void
+static void
 dosys(const char *ctl, ...)
 {
 	va_list va;

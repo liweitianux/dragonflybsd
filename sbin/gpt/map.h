@@ -47,7 +47,7 @@ typedef struct map {
 #define	MAP_TYPE_PMBR		8
 	unsigned int map_index;
 #define NOENTRY		((unsigned int)-1)
-	void 	*map_data;
+	void	*map_data;
 } map_t;
 
 extern int lbawidth;

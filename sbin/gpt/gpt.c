@@ -473,8 +473,8 @@ gpt_gpt(int fd, off_t lba)
 	if (m == NULL)
 		return (-1);
 
-	m = map_add(le64toh(hdr->hdr_lba_table), blocks, (lba == 1)
-	    ? MAP_TYPE_PRI_GPT_TBL : MAP_TYPE_SEC_GPT_TBL, p);
+	m = map_add(le64toh(hdr->hdr_lba_table), blocks,
+	    (lba == 1) ? MAP_TYPE_PRI_GPT_TBL : MAP_TYPE_SEC_GPT_TBL, p);
 	if (m == NULL)
 		return (-1);
 
@@ -491,8 +491,9 @@ gpt_gpt(int fd, off_t lba)
 		if (verbose > 2) {
 			uuid_dec_le(&ent->ent_type, &type);
 			uuid_to_string(&type, &s, NULL);
-			warnx(
-	"%s: GPT partition: type=%s, start=%llu, size=%llu", device_name, s,
+			warnx("%s: GPT partition: type=%s, start=%llu, "
+			    "size=%llu",
+			    device_name, s,
 			    (long long)le64toh(ent->ent_lba_start),
 			    (long long)size);
 			free(s);

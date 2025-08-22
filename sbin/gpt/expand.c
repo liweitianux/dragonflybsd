@@ -67,7 +67,6 @@ expand(int fd __unused)
 	map_t *pmbr;
 	map_t *gpt, *gpt2;
 	map_t *tbl, *tbl2;
-	map_t *map __unused;
 	struct mbr *mbr;
 	off_t last;
 	off_t blocks;
