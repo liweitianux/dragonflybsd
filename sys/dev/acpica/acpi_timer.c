@@ -47,8 +47,9 @@
 #define _COMPONENT	ACPI_TIMER
 ACPI_MODULE_NAME("TIMER")
 
-static device_t			acpi_timer_dev;
-static UINT32			acpi_timer_resolution;
+static device_t		acpi_timer_dev;
+static uint32_t		acpi_timer_resolution;
+static uint32_t		acpi_timer_counter;
 
 static sysclock_t acpi_timer_get_timecount(void);
 static sysclock_t acpi_timer_get_timecount24(void);
@@ -92,6 +93,29 @@ static driver_t acpi_timer_driver = {
 static devclass_t acpi_timer_devclass;
 DRIVER_MODULE(acpi_timer, acpi, acpi_timer_driver, acpi_timer_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_timer, acpi, 1, 1, 1);
+
+/*
+ * Fetch current time value from hardware that may not correctly
+ * latch the counter.  We need to read until we have three monotonic
+ * samples and then use the middle one, otherwise we are not protected
+ * against the fact that the bits can be wrong in two directions.  If
+ * we only cared about monosity, two reads would be enough.
+ */
+static __inline uint32_t
+acpi_timer_safeget(void)
+{
+    uint32_t u1, u2, u3;
+
+    AcpiGetTimer(&u2);
+    AcpiGetTimer(&u3);
+    do {
+	u1 = u2;
+	u2 = u3;
+	AcpiGetTimer(&u3);
+    } while (u1 > u2 || u2 > u3);
+
+    return (u2);
+}
 
 /*
  * Locate the ACPI timer using the FADT, set up and allocate the I/O resources
@@ -154,6 +178,7 @@ acpi_timer_attach(device_t dev)
     for (i = 0; i < 10; i++)
 	j += acpi_timer_test();
     if (j == 10) {
+	/* Reliable hardware */
 	if (acpi_timer_resolution == 32) {
 	    acpi_cputimer.name = "ACPI-fast";
 	    acpi_cputimer.count = acpi_timer_get_timecount;
@@ -185,38 +210,31 @@ acpi_timer_attach(device_t dev)
 static void
 acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
-    timer->base = 0;
-    timer->base = oldclock - acpi_timer_get_timecount_safe();
+    KKASSERT(timer == &acpi_cputimer);
+
+    acpi_timer_counter = acpi_timer_safeget();
+    timer->base = oldclock;
 }
 
-/*
- * Fetch current time value from reliable hardware.
- *
- * The cputimer interface requires a 64 bit return value, so we have to keep
- * track of the upper bits on our own and check for wraparounds.
- */
 static sysclock_t
 acpi_timer_get_timecount24(void)
 {
     sysclock_t last_counter;
     sysclock_t next_counter;
-    uint32_t counter;
+    uint32_t counter, old;
 
+    old = acpi_timer_counter; /* ALY: necessary?? */
     last_counter = acpi_cputimer.base;
     for (;;) {
 	    cpu_ccfence();
 	    AcpiGetTimer(&counter);
-	    if (counter < (last_counter & 0x00FFFFFFU))
-		next_counter = ((last_counter + 0x01000000U) &
-			        0xFFFFFFFFFF000000LU) | counter;
-	    else
-		next_counter = (last_counter &
-			        0xFFFFFFFFFF000000LU) | counter;
+	    next_counter = last_counter + ((counter - old) & 0x00FFFFFFU);
 	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
 				    next_counter)) {
 		break;
 	    }
     }
+    acpi_timer_counter = counter; /* ALY: atomic?? */
     return next_counter;
 }
 
@@ -225,47 +243,21 @@ acpi_timer_get_timecount(void)
 {
     sysclock_t last_counter;
     sysclock_t next_counter;
-    uint32_t counter;
+    uint32_t counter, old;
 
+    old = acpi_timer_counter; /* ALY: necessary?? */
     last_counter = acpi_cputimer.base;
     for (;;) {
 	    cpu_ccfence();
 	    AcpiGetTimer(&counter);
-	    if (counter < (last_counter & 0xFFFFFFFFU))
-		next_counter = ((last_counter + 0x0100000000U) &
-			        0xFFFFFFFF00000000LU) | counter;
-	    else
-		next_counter = (last_counter &
-			        0xFFFFFFFF00000000LU) | counter;
+	    next_counter = last_counter + ((counter - old) & 0xFFFFFFFFU);
 	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
 				    next_counter)) {
 		break;
 	    }
     }
+    acpi_timer_counter = counter; /* ALY: atomic?? */
     return next_counter;
-}
-
-/*
- * Fetch current time value from hardware that may not correctly
- * latch the counter.  We need to read until we have three monotonic
- * samples and then use the middle one, otherwise we are not protected
- * against the fact that the bits can be wrong in two directions.  If
- * we only cared about monosity, two reads would be enough.
- */
-static __inline sysclock_t
-_acpi_timer_get_timecount_safe(void)
-{
-    u_int u1, u2, u3;
-
-    AcpiGetTimer(&u2);
-    AcpiGetTimer(&u3);
-    do {
-	u1 = u2;
-	u2 = u3;
-	AcpiGetTimer(&u3);
-    } while (u1 > u2 || u2 > u3);
-
-    return (u2);
 }
 
 static sysclock_t
@@ -273,33 +265,24 @@ acpi_timer_get_timecount_safe(void)
 {
     sysclock_t last_counter;
     sysclock_t next_counter;
-    uint32_t counter;
+    uint32_t counter, old;
 
+    old = acpi_timer_counter; /* ALY: necessary?? */
     last_counter = acpi_cputimer.base;
     for (;;) {
 	    cpu_ccfence();
-	    counter = _acpi_timer_get_timecount_safe();
+	    counter = acpi_timer_safeget();
 
-	    if (acpi_timer_resolution == 32) {
-		    if (counter < (last_counter & 0xFFFFFFFFU))
-			next_counter = ((last_counter + 0x0100000000U) &
-					0xFFFFFFFF00000000LU) | counter;
-		    else
-			next_counter = (last_counter &
-					0xFFFFFFFF00000000LU) | counter;
-	    } else {
-		    if (counter < (last_counter & 0x00FFFFFFU))
-			next_counter = ((last_counter + 0x01000000U) &
-					0xFFFFFFFFFF000000LU) | counter;
-		    else
-			next_counter = (last_counter &
-					0xFFFFFFFFFF000000LU) | counter;
-	    }
+	    if (acpi_timer_resolution == 32)
+		next_counter = last_counter + ((counter - old) & 0xFFFFFFFFU);
+	    else
+		next_counter = last_counter + ((counter - old) & 0x00FFFFFFU);
 	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
 				    next_counter)) {
 		break;
 	    }
     }
+    acpi_timer_counter = counter; /* ALY: atomic?? */
     return next_counter;
 }
 
