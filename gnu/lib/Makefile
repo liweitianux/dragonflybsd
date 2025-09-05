@@ -6,6 +6,9 @@ SUBDIR+= gcc80
 . if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47}
 SUBDIR+= gcc47
 . endif
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
+SUBDIR+= gcc120
+. endif
 .endif
 
 SUBDIR+= libcryptsetup libdevmapper libdialog libluks liblvm
