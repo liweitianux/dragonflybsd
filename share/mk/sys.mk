@@ -318,7 +318,7 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 # This variable is used to choose the one or more alternative compilers to
 # build for world.  If set to "all", then all available alternative compilers
 # are built.
-WORLD_ALTCOMPILER?= gcc47
+WORLD_ALTCOMPILER?= gcc120
 
 # Include global user settings.
 __MAKE_CONF?=/etc/make.conf
