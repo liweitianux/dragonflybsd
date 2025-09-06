@@ -34,7 +34,8 @@ _cnowarnflags=
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc80")
+.   if !defined(NO_WERROR) && \
+       (${CCVER} == "gcc47" || ${CCVER} == "gcc80" || ${CCVER} == "gcc120")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -72,14 +73,35 @@ _cnowarnflags	+=	-Wno-uninitialized
 _cnowarnflags	+=	-Wno-unused-parameter
 .  endif
 # Delete -Wformat-* family that give little benefits, same for stringop.
-.  if ${WARNS} >= 2 && ${WARNS} <= 6 && ${_WCCVER:Mgcc8*}
+.  if ${WARNS} >= 2 && ${WARNS} <= 6 && (${_WCCVER:Mgcc8*} || ${_WCCVER:Mgcc1[0-9]*})
 _cnowarnflags	+=	-Wno-format-overflow -Wno-format-truncation
 _cnowarnflags	+=	-Wno-stringop-truncation
 .  endif
-.  if ${WARNS} >= 1 && ${WARNS} <= 6 && ${_WCCVER:Mgcc8*}
+.  if ${WARNS} >= 1 && ${WARNS} <= 6 && (${_WCCVER:Mgcc8*} || ${_WCCVER:Mgcc1[0-9]*})
 _cnowarnflags	+=	-Wno-stringop-overflow
 .  endif
-# Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
+.  if ${WARNS} >= 1 && ${WARNS} <= 6 && (${_WCCVER:Mgcc1[0-9]*})
+_cnowarnflags	+=	-Wno-stringop-overread
+.  endif
+# TODO: clean up these later ...
+.  if ${_WCCVER} == "gcc120"
+.    if ${WARNS} >= 1
+_cnowarnflags	+=	-Wno-error=address-of-packed-member
+.    endif
+.    if ${WARNS} >= 2
+_cnowarnflags	+=	-Wno-error=use-after-free
+_cnowarnflags	+=	-Wno-error=address
+_cnowarnflags	+=	-Wno-error=array-parameter
+_cnowarnflags	+=	-Wno-error=maybe-uninitialized
+_cnowarnflags	+=	-Wno-error=enum-conversion
+_cnowarnflags	+=	-Wno-error=dangling-pointer
+_cnowarnflags	+=	-Wno-error=array-bounds
+_cnowarnflags	+=	-Wno-error=inline
+_cnowarnflags	+=	-Wno-error=uninitialized
+_cnowarnflags	+=	-Wno-error=overflow
+.    endif
+.  endif
+# Activate gcc's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
 .  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${_WCCVER:Mgcc*}
@@ -88,10 +110,10 @@ _cnowarnflags	+=	-Wno-unused-but-set-variable
 .  if ${WARNS} == 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-parameter
 .  endif
-.  if ${WARNS} == 3 && (${_WCCVER:Mgcc49} || ${_WCCVER:Mgcc[5-9]*})
+.  if ${WARNS} == 3 && (${_WCCVER:Mgcc49} || ${_WCCVER:Mgcc[5-9]*} || ${_WCCVER:Mgcc1[0-9]*})
 _cnowarnflags	+=	-Wno-unused-value
 .  endif
-.  if ${WARNS} == 3 && ${_WCCVER:Mgcc8*}
+.  if ${WARNS} == 3 && (${_WCCVER:Mgcc8*} || ${_WCCVER:Mgcc1[0-9]*})
 _cnowarnflags	+=	-Wno-implicit-fallthrough
 .  endif
 .  if ${WARNS} >= 2 && ${_WCCVER:Mgcc4[789]}
@@ -121,7 +143,8 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2
-.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc80")
+.   if !defined(NO_WERROR) && \
+       (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -134,7 +157,8 @@ CWARNFLAGS	+=	-Werror
 CFLAGS		+=	-fno-common
 .endif
 
-.if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && ${_WCCVER:Mgcc8*}
+.if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && \
+    (${_WCCVER:Mgcc8*} || ${_WCCVER:Mgcc1[0-9]*})
 _cnowarnflags	+=      -Wno-cast-function-type
 .endif
 .if defined(NO_WARRAY_BOUNDS)
