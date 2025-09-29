@@ -20,7 +20,7 @@ CFLAGS+=	-mpreferred-stack-boundary=4
 CFLAGS+=	-mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-sse4 -mno-sse4a
 CFLAGS+=	-mno-abm -mno-aes -mno-avx -mno-pclmul -mno-popcnt
 
-.if ${CCVER:Mgcc8*}
+.if ${CCVER:Mgcc8*} || ${CCVER:Mgcc1[0-9]*}
 CFLAGS+=	-mindirect-branch=thunk-inline
 .endif
 .endif

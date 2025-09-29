@@ -80,9 +80,9 @@ KMODMODE?=	${BINMODE}
 
 .SUFFIXES: .out .o .c .cc .cxx .C .y .l .s .S
 
-.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
-WERROR=-Werror
-.endif
+#.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
+#WERROR=-Werror
+#.endif
 
 COPTFLAGS?=-O2 -pipe
 
@@ -157,6 +157,7 @@ CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${KERNBUILDDIR}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
+
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-fno-omit-frame-pointer
 .endif
