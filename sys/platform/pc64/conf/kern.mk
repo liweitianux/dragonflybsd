@@ -17,8 +17,7 @@ CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 
 .if ${CCVER:Mgcc*}
 CFLAGS+=	-mpreferred-stack-boundary=4
-CFLAGS+=	-mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-sse4 -mno-sse4a \
-		-mno-sse5 
+CFLAGS+=	-mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-sse4 -mno-sse4a
 CFLAGS+=	-mno-abm -mno-aes -mno-avx -mno-pclmul -mno-popcnt
 
 .if ${CCVER:Mgcc8*}
