@@ -118,10 +118,6 @@ CFLAGS+=	-nostdinc ${_ICFLAGS}
 # operate relative to /usr/src/sys using e.g. <platform/pc64/isa/blah.h>
 #
 CFLAGS+=	-I.
-.if defined(FREEBSD_COMPAT)
-CFLAGS+=	-Idragonfly/freebsd_compat
-CFLAGS+=	-DFREEBSD_COMPAT=1
-.endif
 CFLAGS+=	-Idragonfly
 
 # Add -I paths for headers in the kernel build directory
