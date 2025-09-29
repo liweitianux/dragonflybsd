@@ -26,6 +26,7 @@ CFLAGS+=	-mindirect-branch=thunk-inline
 .endif
 
 CFLAGS+=	-msoft-float
+CFLAGS+=	-mno-fp-ret-in-387
 CFLAGS+=	-fno-asynchronous-unwind-tables -fno-omit-frame-pointer
 
 INLINE_LIMIT?=	8000
