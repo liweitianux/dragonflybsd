@@ -535,6 +535,33 @@ static uint64_t svm_xcr0_mask __read_mostly;
 #define CR0_FORCE_ONE \
 	(CR0_ET | CR0_NE)
 
+#define CR4_VALID \
+	(CR4_VME |			\
+	 CR4_PVI |			\
+	 CR4_TSD |			\
+	 CR4_DE |			\
+	 CR4_PSE |			\
+	 CR4_PAE |			\
+	 CR4_MCE |			\
+	 CR4_PGE |			\
+	 CR4_PCE |			\
+	 CR4_OSFXSR |			\
+	 CR4_OSXMMEXCPT |		\
+	 CR4_UMIP |			\
+	 /* CR4_LA57 excluded */	\
+	 /* bit 13 reserved on AMD */	\
+	 /* bit 14 reserved on AMD */	\
+	 /* bit 15 reserved on AMD */	\
+	 CR4_FSGSBASE |			\
+	 CR4_PCIDE |			\
+	 CR4_OSXSAVE |			\
+	 /* bit 19 reserved on AMD */	\
+	 CR4_SMEP |			\
+	 CR4_SMAP			\
+	 /* CR4_PKE excluded */		\
+	 /* CR4_CET excluded */		\
+	 /* bits 24:63 reserved on AMD */)
+
 /* Does not include EFER_LMSLE. */
 #define EFER_VALID \
 	(EFER_SCE|EFER_LME|EFER_LMA|EFER_NXE|EFER_SVME|EFER_FFXSR|EFER_TCE)
@@ -1134,6 +1161,20 @@ svm_exit_hlt(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->reason = NVMM_VCPU_EXIT_HALTED;
 }
 
+static inline uint64_t
+svm_read_gpr(struct svm_cpudata *cpudata, int num)
+{
+	struct vmcb *vmcb = cpudata->vmcb;
+
+	if (num == NVMM_X64_GPR_RAX) {
+		return vmcb->state.rax;
+	} else if (num == NVMM_X64_GPR_RSP) {
+		return vmcb->state.rsp;
+	} else {
+		return cpudata->gprs[num];
+	}
+}
+
 #define SVM_EXIT_CR_GPR		__BITS(3,0)	/* GPR number */
 #define SVM_EXIT_CR_MOV		__BIT(63)	/* instruction was MOV */
 
@@ -1159,13 +1200,7 @@ svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	}
 
 	gpr = __SHIFTOUT(info, SVM_EXIT_CR_GPR);
-	if (gpr == NVMM_X64_GPR_RAX) {
-		cr0 = vmcb->state.rax;
-	} else if (gpr == NVMM_X64_GPR_RSP) {
-		cr0 = vmcb->state.rsp;
-	} else {
-		cr0 = cpudata->gprs[gpr];
-	}
+	cr0 = svm_read_gpr(cpudata, gpr);
 	cr0 = (cr0 & ~CR0_FORCE_ZERO) | CR0_FORCE_ONE;
 
 	if (cr0 & CR0_PG) {
@@ -1187,6 +1222,39 @@ svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	}
 	if (cr0 != oldcr0) {
 		vmcb->state.cr0 = cr0;
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR);
+	}
+
+	exit->reason = NVMM_VCPU_EXIT_NONE;
+	svm_inkernel_advance(cpudata->vmcb);
+}
+
+static void
+svm_exit_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
+    struct nvmm_vcpu_exit *exit)
+{
+	struct svm_cpudata *cpudata = vcpu->cpudata;
+	struct vmcb *vmcb = cpudata->vmcb;
+	uint64_t info, gpr, cr4, oldcr4;
+
+	if (__predict_false(!svm_decode_assist)) {
+		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
+		return;
+	}
+
+	info = cpudata->vmcb->ctrl.exitinfo1;
+	OS_ASSERT(info & SVM_EXIT_CR_MOV);
+
+	gpr = __SHIFTOUT(info, SVM_EXIT_CR_GPR);
+	cr4 = svm_read_gpr(cpudata, gpr);
+	cr4 &= CR4_VALID;
+
+	oldcr4 = vmcb->state.cr4;
+	if ((cr4 ^ oldcr4) & CR4_TLB_FLUSH) {
+		cpudata->gtlb_want_flush = true;
+	}
+	if (cr4 != oldcr4) {
+		vmcb->state.cr4 = cr4;
 		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR);
 	}
 
@@ -1731,6 +1799,9 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			svm_event_waitexit_disable(vcpu, false);
 			exit->reason = NVMM_VCPU_EXIT_INT_READY;
 			break;
+		case VMCB_EXITCODE_CR4_WRITE:
+			svm_exit_cr4(mach, vcpu, exit);
+			break;
 		case VMCB_EXITCODE_CR0_SEL_WRITE:
 			svm_exit_cr0(mach, vcpu, exit);
 			break;
@@ -2005,7 +2076,7 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		    CR0_FORCE_ONE;
 		vmcb->state.cr2 = state->crs[NVMM_X64_CR_CR2];
 		vmcb->state.cr3 = state->crs[NVMM_X64_CR_CR3];
-		vmcb->state.cr4 = state->crs[NVMM_X64_CR_CR4];
+		vmcb->state.cr4 = state->crs[NVMM_X64_CR_CR4] & CR4_VALID;
 
 		vmcb->ctrl.v &= ~VMCB_CTRL_V_TPR;
 		vmcb->ctrl.v |= __SHIFTIN(state->crs[NVMM_X64_CR_CR8],
@@ -2153,7 +2224,7 @@ svm_vcpu_getstate(struct nvmm_cpu *vcpu)
 		state->crs[NVMM_X64_CR_CR0] = vmcb->state.cr0;
 		state->crs[NVMM_X64_CR_CR2] = vmcb->state.cr2;
 		state->crs[NVMM_X64_CR_CR3] = vmcb->state.cr3;
-		state->crs[NVMM_X64_CR_CR4] = vmcb->state.cr4;
+		state->crs[NVMM_X64_CR_CR4] = vmcb->state.cr4 & CR4_VALID;
 		state->crs[NVMM_X64_CR_CR8] = __SHIFTOUT(vmcb->ctrl.v,
 		    VMCB_CTRL_V_TPR);
 		state->crs[NVMM_X64_CR_XCR0] = cpudata->gxcr0;
@@ -2283,11 +2354,12 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct vmcb *vmcb = cpudata->vmcb;
 
 	/*
-	 * Allow reads/writes of Control Registers.
+	 * Control Registers: intercept writes of CR4, allow otherwise.
 	 * However, selective CR0 write is actually intercepted below with
 	 * VMCB_CTRL_INTERCEPT_CR0_SEL.
 	 */
-	vmcb->ctrl.intercept_cr = 0;
+	vmcb->ctrl.intercept_cr =
+	    VMCB_CTRL_INTERCEPT_WCR(4);
 
 	/* Allow reads/writes of Debug Registers. */
 	vmcb->ctrl.intercept_dr = 0;
