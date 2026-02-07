@@ -42,7 +42,11 @@
 #error "Unsupported OS."
 #endif
 
-#define NVMM_USER_VERSION	1
+/*
+ * v1: Initial version
+ * v2: Add nvmm_vcpu_stop() API
+ */
+#define NVMM_USER_VERSION	2
 
 struct nvmm_io;
 struct nvmm_mem;
@@ -110,6 +114,7 @@ int nvmm_vcpu_setstate(struct nvmm_machine *, struct nvmm_vcpu *, uint64_t);
 int nvmm_vcpu_getstate(struct nvmm_machine *, struct nvmm_vcpu *, uint64_t);
 int nvmm_vcpu_inject(struct nvmm_machine *, struct nvmm_vcpu *);
 int nvmm_vcpu_run(struct nvmm_machine *, struct nvmm_vcpu *);
+int nvmm_vcpu_stop(struct nvmm_machine *, struct nvmm_vcpu *);
 
 int nvmm_gpa_map(struct nvmm_machine *, uintptr_t, gpaddr_t, size_t, int);
 int nvmm_gpa_unmap(struct nvmm_machine *, uintptr_t, gpaddr_t, size_t);

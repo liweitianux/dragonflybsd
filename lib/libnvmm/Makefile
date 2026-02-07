@@ -25,6 +25,7 @@ MLINKS= \
 	libnvmm.3 nvmm_vcpu_getstate.3 \
 	libnvmm.3 nvmm_vcpu_inject.3 \
 	libnvmm.3 nvmm_vcpu_run.3 \
-	libnvmm.3 nvmm_vcpu_setstate.3
+	libnvmm.3 nvmm_vcpu_setstate.3 \
+	libnvmm.3 nvmm_vcpu_stop.3
 
 .include <bsd.lib.mk>
