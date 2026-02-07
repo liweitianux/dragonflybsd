@@ -98,6 +98,11 @@ struct nvmm_ioc_vcpu_run {
 	struct nvmm_vcpu_exit exit;
 };
 
+struct nvmm_ioc_vcpu_stop {
+	nvmm_machid_t machid;
+	nvmm_cpuid_t cpuid;
+};
+
 struct nvmm_ioc_hva_map {
 	nvmm_machid_t machid;
 	uintptr_t hva;
@@ -155,10 +160,12 @@ struct nvmm_ioc_ctl {
 #define NVMM_IOC_VCPU_GETSTATE		_IOW ('N',  8, struct nvmm_ioc_vcpu_getstate)
 #define NVMM_IOC_VCPU_INJECT		_IOW ('N',  9, struct nvmm_ioc_vcpu_inject)
 #define NVMM_IOC_VCPU_RUN		_IOWR('N', 10, struct nvmm_ioc_vcpu_run)
+#define NVMM_IOC_VCPU_STOP		_IOW ('N', 15, struct nvmm_ioc_vcpu_stop)
 #define NVMM_IOC_GPA_MAP		_IOW ('N', 11, struct nvmm_ioc_gpa_map)
 #define NVMM_IOC_GPA_UNMAP		_IOW ('N', 12, struct nvmm_ioc_gpa_unmap)
 #define NVMM_IOC_HVA_MAP		_IOW ('N', 13, struct nvmm_ioc_hva_map)
 #define NVMM_IOC_HVA_UNMAP		_IOW ('N', 14, struct nvmm_ioc_hva_unmap)
+					/* 15: NVMM_IOC_VCPU_STOP */
 #define NVMM_IOC_CTL			_IOW ('N', 20, struct nvmm_ioc_ctl)
 
 #endif /* _NVMM_IOCTL_H_ */

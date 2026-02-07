@@ -1646,6 +1646,9 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	svm_vcpu_guest_misc_enter(vcpu);
 
 	while (1) {
+		if (comm->vcpu_stop)
+			break;
+
 		if (__predict_false(cpudata->gtlb_want_flush ||
 				    cpudata->htlb_want_flush))
 		{
@@ -1698,7 +1701,14 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 #endif
 
+		vcpu->hcpu = os_curcpu();
+		comm->vcpu_running = true;
+
 		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs);
+
+		comm->vcpu_running = false;
+		vcpu->hcpu = NULL;
+
 		svm_htlb_flush_ack(cpudata, machgen);
 		svm_vcpu_guest_fpu_leave(vcpu);
 		svm_stgi();
@@ -1790,6 +1800,8 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 	}
 
+	comm->vcpu_stop = false;
+
 	svm_vcpu_guest_misc_leave(vcpu);
 	svm_vcpu_guest_dbregs_leave(vcpu);
 
@@ -1804,6 +1816,30 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->exitstate.evt_pending = cpudata->evt_pending;
 
 	return error;
+}
+
+static
+OS_IPI_FUNC(svm_vcpu_kick_remote)
+{
+	(void)arg;
+	/* nothing */
+}
+
+static void
+svm_vcpu_stop(struct nvmm_cpu *vcpu)
+{
+	os_cpu_t *hcpu;
+
+	hcpu = atomic_load_ptr(&vcpu->hcpu);
+	if (__predict_false(hcpu == NULL))
+		return;
+
+	/*
+	 * Kick the hCPU by sending an IPI to it to cause a VMEXIT.
+	 * Upon VMEXIT the kernel will see that vcpu_stop is true, and will
+	 * return to userland.
+	 */
+	os_ipi_unicast(hcpu, svm_vcpu_kick_remote, NULL);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2784,5 +2820,6 @@ const struct nvmm_impl nvmm_x86_svm = {
 	.vcpu_setstate = svm_vcpu_setstate,
 	.vcpu_getstate = svm_vcpu_getstate,
 	.vcpu_inject = svm_vcpu_inject,
-	.vcpu_run = svm_vcpu_run
+	.vcpu_run = svm_vcpu_run,
+	.vcpu_stop = svm_vcpu_stop,
 };

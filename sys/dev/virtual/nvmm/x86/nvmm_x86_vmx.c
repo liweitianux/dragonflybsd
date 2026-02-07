@@ -2316,6 +2316,9 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	vmx_vcpu_guest_misc_enter(vcpu);
 
 	while (1) {
+		if (comm->vcpu_stop)
+			break;
+
 		if (cpudata->gtlb_want_flush) {
 			vpid_desc.vpid = cpudata->asid;
 			vpid_desc.addr = 0;
@@ -2369,11 +2372,19 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #endif
 
 		x86_set_cr2(cpudata->gcr2);
+
+		vcpu->hcpu = os_curcpu();
+		comm->vcpu_running = true;
+
 		if (launched) {
 			ret = vmx_vmresume(cpudata->gprs);
 		} else {
 			ret = vmx_vmlaunch(cpudata->gprs);
 		}
+
+		comm->vcpu_running = false;
+		vcpu->hcpu = NULL;
+
 		cpudata->gcr2 = x86_get_cr2();
 		vmx_htlb_flush_ack(cpudata, machgen);
 		vmx_vcpu_guest_fpu_leave(vcpu);
@@ -2469,6 +2480,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 	}
 
+	comm->vcpu_stop = false;
 	cpudata->vmcs_launched = launched;
 
 	vmx_vcpu_guest_misc_leave(vcpu);
@@ -2486,6 +2498,30 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	vmx_vmcs_leave(vcpu);
 
 	return error;
+}
+
+static
+OS_IPI_FUNC(vmx_vcpu_kick_remote)
+{
+	(void)arg;
+	/* nothing */
+}
+
+static void
+vmx_vcpu_stop(struct nvmm_cpu *vcpu)
+{
+	os_cpu_t *hcpu;
+
+	hcpu = atomic_load_ptr(&vcpu->hcpu);
+	if (__predict_false(hcpu == NULL))
+		return;
+
+	/*
+	 * Kick the hCPU by sending an IPI to it to cause a VMEXIT.
+	 * Upon VMEXIT the kernel will see that vcpu_stop is true, and will
+	 * return to userland.
+	 */
+	os_ipi_unicast(hcpu, vmx_vcpu_kick_remote, NULL);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3692,5 +3728,6 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.vcpu_setstate = vmx_vcpu_setstate,
 	.vcpu_getstate = vmx_vcpu_getstate,
 	.vcpu_inject = vmx_vcpu_inject,
-	.vcpu_run = vmx_vcpu_run
+	.vcpu_run = vmx_vcpu_run,
+	.vcpu_stop = vmx_vcpu_stop,
 };

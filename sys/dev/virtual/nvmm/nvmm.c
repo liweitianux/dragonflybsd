@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2026 The DragonFly Project
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -144,7 +145,9 @@ nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 	vcpu->present = true;
 	vcpu->comm = NULL;
 	vcpu->hcpu_last = -1;
+	vcpu->hcpu = NULL;
 	*ret = vcpu;
+
 	return 0;
 }
 
@@ -621,6 +624,29 @@ out:
 	return error;
 }
 
+static int
+nvmm_vcpu_stop(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_stop *args)
+{
+	struct nvmm_machine *mach;
+	struct nvmm_cpu *vcpu;
+	int error;
+
+	error = nvmm_machine_get(owner, args->machid, &mach, false);
+	if (error)
+		return error;
+
+	error = nvmm_vcpu_get(mach, args->cpuid, &vcpu);
+	if (error)
+		goto out;
+
+	(*nvmm_impl->vcpu_stop)(vcpu);
+	nvmm_vcpu_put(vcpu);
+
+out:
+	nvmm_machine_put(mach);
+	return error;
+}
+
 /* -------------------------------------------------------------------------- */
 
 static os_vmobj_t *
@@ -1034,6 +1060,8 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 		return nvmm_vcpu_inject(owner, data);
 	case NVMM_IOC_VCPU_RUN:
 		return nvmm_vcpu_run(owner, data);
+	case NVMM_IOC_VCPU_STOP:
+		return nvmm_vcpu_stop(owner, data);
 	case NVMM_IOC_GPA_MAP:
 		return nvmm_gpa_map(owner, data);
 	case NVMM_IOC_GPA_UNMAP:

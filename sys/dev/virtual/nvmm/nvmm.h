@@ -59,8 +59,9 @@ typedef uint32_t	nvmm_cpuid_t;
  * v1: Initial version
  * v2: Create VCPU comm page in nvmm_vcpu_create() in kernel
  * v3: Add 'nvmm_capability.comm_size' for unmapping the comm page
+ * v4: Add NVMM_IOC_VCPU_STOP and extend 'nvmm_comm_page' for that
  */
-#define NVMM_KERN_VERSION		3
+#define NVMM_KERN_VERSION		4
 
 struct nvmm_capability {
 	uint32_t version;
@@ -94,6 +95,10 @@ struct nvmm_comm_page {
 	/* Event. */
 	bool event_commit;
 	struct nvmm_vcpu_event event;
+
+	/* VCPU status. */
+	bool vcpu_stop;
+	bool vcpu_running;
 };
 
 #endif
