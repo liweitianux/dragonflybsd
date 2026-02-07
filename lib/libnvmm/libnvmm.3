@@ -25,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 20, 2021
+.Dd February 7, 2026
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Nm nvmm_vcpu_setstate ,
 .Nm nvmm_vcpu_inject ,
 .Nm nvmm_vcpu_run ,
+.Nm nvmm_vcpu_stop ,
 .Nm nvmm_hva_map ,
 .Nm nvmm_hva_unmap ,
 .Nm nvmm_gpa_map ,
@@ -84,6 +85,8 @@
 .Fn nvmm_vcpu_inject "struct nvmm_machine *mach" "struct nvmm_vcpu *vcpu"
 .Ft int
 .Fn nvmm_vcpu_run "struct nvmm_machine *mach" "struct nvmm_vcpu *vcpu"
+.Ft int
+.Fn nvmm_vcpu_stop "struct nvmm_machine *mach" "struct nvmm_vcpu *vcpu"
 .Ft int
 .Fn nvmm_hva_map "struct nvmm_machine *mach" "uintptr_t hva" "size_t size"
 .Ft int
@@ -219,6 +222,12 @@ The
 .Fa vcpu->exit
 structure is filled to indicate the exit reason, and the associated parameters
 if any.
+.Pp
+.Fn nvmm_vcpu_stop
+stops the CPU identified by
+.Fa vcpu
+in the machine
+.Fa mach .
 .Pp
 .Fn nvmm_hva_map
 maps at address

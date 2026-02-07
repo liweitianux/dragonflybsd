@@ -438,6 +438,28 @@ nvmm_vcpu_run(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 }
 
 int
+nvmm_vcpu_stop(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+{
+	struct nvmm_ioc_vcpu_stop args;
+	struct nvmm_comm_page *comm;
+	int ret;
+
+	comm = mach->pages[vcpu->cpuid];
+	comm->vcpu_stop = true;
+
+	if (comm->vcpu_running) {
+		args.machid = mach->machid;
+		args.cpuid = vcpu->cpuid;
+
+		ret = ioctl(nvmm_fd, NVMM_IOC_VCPU_STOP, &args);
+		if (ret == -1)
+			return -1;
+	}
+
+	return 0;
+}
+
+int
 nvmm_gpa_map(struct nvmm_machine *mach, uintptr_t hva, gpaddr_t gpa,
     size_t size, int prot)
 {
