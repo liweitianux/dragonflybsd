@@ -108,6 +108,7 @@ int nvmm_vcpu_setstate(struct nvmm_machine *, struct nvmm_vcpu *, uint64_t);
 int nvmm_vcpu_getstate(struct nvmm_machine *, struct nvmm_vcpu *, uint64_t);
 int nvmm_vcpu_inject(struct nvmm_machine *, struct nvmm_vcpu *);
 int nvmm_vcpu_run(struct nvmm_machine *, struct nvmm_vcpu *);
+int nvmm_vcpu_stop(struct nvmm_machine *, struct nvmm_vcpu *);
 
 int nvmm_gpa_map(struct nvmm_machine *, uintptr_t, gpaddr_t, size_t, int);
 int nvmm_gpa_unmap(struct nvmm_machine *, uintptr_t, gpaddr_t, size_t);
