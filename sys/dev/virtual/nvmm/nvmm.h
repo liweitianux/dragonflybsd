@@ -96,6 +96,10 @@ struct nvmm_comm_page {
 	/* Event. */
 	bool event_commit;
 	struct nvmm_vcpu_event event;
+
+	/* VCPU status. */
+	bool vcpu_stop;
+	bool vcpu_running;
 };
 
 #endif

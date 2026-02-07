@@ -63,6 +63,8 @@ struct nvmm_cpu {
 
 	/* Last host CPU on which the VCPU ran. */
 	int hcpu_last;
+	/* Current host CPU on which the VCPU is running. */
+	os_cpu_t *hcpu;
 
 	/* Implementation-specific. */
 	void *cpudata;
@@ -127,6 +129,7 @@ struct nvmm_impl {
 	void (*vcpu_getstate)(struct nvmm_cpu *);
 	int (*vcpu_run)(struct nvmm_machine *, struct nvmm_cpu *,
 	    struct nvmm_vcpu_exit *);
+	void (*vcpu_stop)(struct nvmm_cpu *);
 };
 
 #if defined(__x86_64__)

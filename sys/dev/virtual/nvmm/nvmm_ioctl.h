@@ -91,6 +91,11 @@ struct nvmm_ioc_vcpu_run {
 	struct nvmm_vcpu_exit exit;
 };
 
+struct nvmm_ioc_vcpu_stop {
+	nvmm_machid_t machid;
+	nvmm_cpuid_t cpuid;
+};
+
 struct nvmm_ioc_hva_map {
 	nvmm_machid_t machid;
 	uintptr_t hva;
@@ -152,6 +157,7 @@ struct nvmm_ioc_ctl {
 #define NVMM_IOC_GPA_UNMAP		_IOW ('N', 12, struct nvmm_ioc_gpa_unmap)
 #define NVMM_IOC_HVA_MAP		_IOW ('N', 13, struct nvmm_ioc_hva_map)
 #define NVMM_IOC_HVA_UNMAP		_IOW ('N', 14, struct nvmm_ioc_hva_unmap)
+#define NVMM_IOC_VCPU_STOP		_IOW ('N', 15, struct nvmm_ioc_vcpu_stop)
 #define NVMM_IOC_CTL			_IOW ('N', 20, struct nvmm_ioc_ctl)
 
 #endif /* _NVMM_IOCTL_H_ */
