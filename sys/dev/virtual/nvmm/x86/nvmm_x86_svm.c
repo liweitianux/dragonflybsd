@@ -1143,18 +1143,19 @@ svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
-	uint64_t info = cpudata->vmcb->ctrl.exitinfo1;
-	uint64_t gpr, cr0, oldcr0, efer;
+	uint64_t info, gpr, cr0, oldcr0, efer;
 
-	if (__predict_false(!(info & SVM_EXIT_CR_MOV))) {
+	info = cpudata->vmcb->ctrl.exitinfo1;
+	if (__predict_false(!svm_decode_assist || !(info & SVM_EXIT_CR_MOV))) {
 		/*
-		 * Instruction wasn't MOV; must be LMSW since we're
+		 * (1) DecodeAssists not available: cannot use EXITINFO1.
+		 *
+		 * (2) Instruction wasn't MOV; must be LMSW since we're
 		 * intercepting a selective CR0 write (changing any bits
 		 * other than CR0.TS or CR0.MP).
-		 *
-		 * XXX: Should delegate to userland emulation.
 		 */
-		goto handled;
+		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
+		return;
 	}
 
 	gpr = __SHIFTOUT(info, SVM_EXIT_CR_GPR);
@@ -1189,7 +1190,6 @@ svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR);
 	}
 
-handled:
 	exit->reason = NVMM_VCPU_EXIT_NONE;
 	svm_inkernel_advance(cpudata->vmcb);
 }
@@ -2322,6 +2322,7 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    VMCB_CTRL_INTERCEPT_INTR |
 	    VMCB_CTRL_INTERCEPT_NMI |
 	    VMCB_CTRL_INTERCEPT_INIT |
+	    VMCB_CTRL_INTERCEPT_CR0_SEL |
 	    VMCB_CTRL_INTERCEPT_RDPMC |
 	    VMCB_CTRL_INTERCEPT_CPUID |
 	    VMCB_CTRL_INTERCEPT_RSM |
@@ -2332,9 +2333,6 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    VMCB_CTRL_INTERCEPT_MSR_PROT |
 	    VMCB_CTRL_INTERCEPT_FERR_FREEZE |
 	    VMCB_CTRL_INTERCEPT_SHUTDOWN;
-	if (svm_decode_assist) {
-		vmcb->ctrl.intercept_misc1 |= VMCB_CTRL_INTERCEPT_CR0_SEL;
-	}
 
 	/*
 	 * Allow:
