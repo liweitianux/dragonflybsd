@@ -36,25 +36,10 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <machine/segments.h>
-#include <machine/psl.h>
 
 #include <nvmm.h>
 
-#ifdef __NetBSD__
-
-#include <machine/pte.h>
-#define PAGE_SIZE 4096
-
-#else /* DragonFly */
-
-#include <machine/pmap.h>
-#define PTE_P		X86_PG_V	/* 0x001: P (Valid) */
-#define PTE_W		X86_PG_RW	/* 0x002: R/W (Read/Write) */
-#define PSL_MBO		PSL_RESERVED_DEFAULT	/* 0x00000002 */
-#define SDT_SYS386BSY	SDT_SYSBSY	/* 11: system 64-bit TSS busy */
-
-#endif /* __NetBSD__ */
+#include "h_os.h"
 
 #define IO_SIZE	128
 
@@ -108,19 +93,7 @@ reset_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	state->crs[NVMM_X64_CR_CR4] = CR4_PAE;
 	state->msrs[NVMM_X64_MSR_EFER] = EFER_LME | EFER_SCE | EFER_LMA;
 
-	/* Stolen from x86/pmap.c */
-#define	PATENTRY(n, type)	(type << ((n) * 8))
-#define	PAT_UC		0x0ULL
-#define	PAT_WC		0x1ULL
-#define	PAT_WT		0x4ULL
-#define	PAT_WP		0x5ULL
-#define	PAT_WB		0x6ULL
-#define	PAT_UCMINUS	0x7ULL
-	state->msrs[NVMM_X64_MSR_PAT] =
-	    PATENTRY(0, PAT_WB) | PATENTRY(1, PAT_WT) |
-	    PATENTRY(2, PAT_UCMINUS) | PATENTRY(3, PAT_UC) |
-	    PATENTRY(4, PAT_WB) | PATENTRY(5, PAT_WT) |
-	    PATENTRY(6, PAT_UCMINUS) | PATENTRY(7, PAT_UC);
+	state->msrs[NVMM_X64_MSR_PAT] = MSR_PAT_VALUE;
 
 	/* Page tables. */
 	state->crs[NVMM_X64_CR_CR3] = 0x3000;
