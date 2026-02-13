@@ -6,6 +6,7 @@ SRCS=	libnvmm.c
 INCS=	nvmm.h
 
 MLINKS= \
+	libnvmm.3 nvmm_assist_insn.3 \
 	libnvmm.3 nvmm_assist_io.3 \
 	libnvmm.3 nvmm_assist_mem.3 \
 	libnvmm.3 nvmm_capability.3 \
