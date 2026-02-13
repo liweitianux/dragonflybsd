@@ -25,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 7, 2026
+.Dd February 13, 2026
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
@@ -50,7 +50,8 @@
 .Nm nvmm_gva_to_gpa ,
 .Nm nvmm_gpa_to_hva ,
 .Nm nvmm_assist_io ,
-.Nm nvmm_assist_mem
+.Nm nvmm_assist_mem ,
+.Nm nvmm_assist_insn
 .Nd NVMM Virtualization API
 .Sh LIBRARY
 .Lb libnvmm
@@ -107,6 +108,8 @@
 .Fn nvmm_assist_io "struct nvmm_machine *mach" "struct nvmm_vcpu *vcpu"
 .Ft int
 .Fn nvmm_assist_mem "struct nvmm_machine *mach" "struct nvmm_vcpu *vcpu"
+.Ft int
+.Fn nvmm_assist_insn "struct nvmm_machine *mach" "struct nvmm_vcpu *vcpu"
 .Sh DESCRIPTION
 .Nm
 provides a library for emulator software to handle hardware-accelerated virtual
@@ -311,6 +314,17 @@ from machine
 .Fa mach .
 See
 .Sx Memory Assist
+below for details.
+.Pp
+.Fn nvmm_assist_insn
+emulates the instruction operation described in
+.Fa vcpu->exit
+on CPU
+.Fa vcpu
+from machine
+.Fa mach .
+See
+.Sx Instruction Assist
 below for details.
 .Ss NVMM Initialization
 NVMM initialization is performed by the
@@ -531,6 +545,7 @@ structure is used to handle VM exits:
 /* x86: operations. */
 #define NVMM_VCPU_EXIT_MEMORY		0x0000000000000001ULL
 #define NVMM_VCPU_EXIT_IO		0x0000000000000002ULL
+#define NVMM_VCPU_EXIT_INSN		0x0000000000000003ULL
 /* x86: changes in VCPU state. */
 #define NVMM_VCPU_EXIT_SHUTDOWN		0x0000000000001000ULL
 #define NVMM_VCPU_EXIT_INT_READY	0x0000000000001001ULL
@@ -740,6 +755,40 @@ will indicate the guest physical address,
 will indicate if the access is a write, and
 .Va size
 will indicate the size of the access.
+.Ss Instruction Assist
+When a VM exit occurs with reason
+.Dv NVMM_VCPU_EXIT_INSN ,
+the associated instruction must be emulated in userland.
+For this purpose,
+.Nm
+provides the
+.Fn nvmm_assist_insn
+function.
+.Pp
+Unlike I/O and memory assists, instruction assists do not use callbacks.
+Instead,
+.Fn nvmm_assist_insn
+fetches and decodes the faulting instruction, emulates it, and applies
+the resulting state changes directly to the VCPU.
+.Pp
+Instruction assists are used for operations delegated to userland by the
+.Xr nvmm 4
+kernel driver when they cannot be handled in-kernel.
+For example, the AMD SVM backend delegates intercepted control register
+writes to userland when the
+.Dv DecodeAssists
+feature is unavailable.
+.Pp
+On x86, the following instructions are supported:
+.Pp
+.Bl -bullet -offset indent -compact
+.It
+.Li LMSW
+.It
+.Li MOV CR0, Ar reg
+.It
+.Li MOV CR4, Ar reg
+.El
 .Sh RETURN VALUES
 Upon successful completion, each of these functions returns zero.
 Otherwise, a value of \-1 is returned and the global variable

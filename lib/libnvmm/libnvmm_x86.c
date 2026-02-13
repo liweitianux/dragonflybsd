@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2026 The DragonFly Project
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -896,6 +897,8 @@ static int x86_func_test(const struct x86_instr *, struct nvmm_vcpu *, struct nv
 static int x86_func_mov(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
 static int x86_func_stos(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
 static int x86_func_lods(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_lmsw(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_mov_cr(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
 
 static const struct x86_emul x86_emul_or = {
 	.readreg = true,
@@ -943,6 +946,14 @@ static const struct x86_emul x86_emul_stos = {
 
 static const struct x86_emul x86_emul_lods = {
 	.func = x86_func_lods
+};
+
+static const struct x86_emul x86_emul_lmsw = {
+	.func = x86_func_lmsw
+};
+
+static const struct x86_emul x86_emul_mov_cr = {
+	.func = x86_func_mov_cr
 };
 
 /* Legacy prefixes. */
@@ -1076,6 +1087,7 @@ struct x86_opcode {
 	bool szoverride:1;
 	bool group1:1;
 	bool group3:1;
+	bool group7:1;
 	bool group11:1;
 	bool immediate:1;
 	uint8_t defsize;
@@ -1106,6 +1118,10 @@ static const struct x86_group_entry group1[8] __cacheline_aligned = {
 static const struct x86_group_entry group3[8] __cacheline_aligned = {
 	[0] = { .emul = &x86_emul_test },
 	[1] = { .emul = &x86_emul_test }
+};
+
+static const struct x86_group_entry group7[8] __cacheline_aligned = {
+	[6] = { .emul = &x86_emul_lmsw },
 };
 
 static const struct x86_group_entry group11[8] __cacheline_aligned = {
@@ -1526,6 +1542,32 @@ static const struct x86_opcode primary_opcode_table[256] __cacheline_aligned = {
 };
 
 static const struct x86_opcode secondary_opcode_table[256] __cacheline_aligned = {
+	/*
+	 * Group7: LMSW
+	 */
+	[0x01] = {
+		/* Gw */
+		.valid = true,
+		.regmodrm = true,
+		.szoverride = false,
+		.defsize = OPSIZE_WORD,
+		.group7 = true,
+		.emul = NULL, /* group7 */
+	},
+
+	/*
+	 * MOV CR
+	 */
+	[0x22] = {
+		/* Cd, Gv */
+		.valid = true,
+		.regmodrm = true,
+		.regtorm = false,
+		.szoverride = true,
+		.defsize = -1,
+		.emul = &x86_emul_mov_cr,
+	},
+
 	/*
 	 * MOVZX
 	 */
@@ -2318,6 +2360,11 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 			return -1;
 		}
 		instr->emul = group3[instr->regmodrm.reg].emul;
+	} else if (opcode->group7) {
+		if (group7[instr->regmodrm.reg].emul == NULL) {
+			return -1;
+		}
+		instr->emul = group7[instr->regmodrm.reg].emul;
 	} else if (opcode->group11) {
 		if (group11[instr->regmodrm.reg].emul == NULL) {
 			return -1;
@@ -2744,6 +2791,9 @@ EXEC_DISPATCHER(xor)
 
 /* -------------------------------------------------------------------------- */
 
+#define EXCEPTION_UD	6
+#define EXCEPTION_GP	13
+
 /*
  * Emulation functions. We don't care about the order of the operands, except
  * for SUB, CMP and TEST. For these ones we look at mem->write to determine who
@@ -3026,6 +3076,99 @@ x86_func_lods(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
 	}
 
 	return 0;
+}
+
+static int
+x86_func_lmsw(const struct x86_instr *instr, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
+{
+	struct nvmm_x64_state *state = vcpu->state;
+	uint64_t old_cr0, new_cr0;
+	uint16_t operand;
+
+	if (state->segs[NVMM_X64_SEG_CS].attrib.dpl != 0) {
+		return EXCEPTION_GP;
+	}
+
+	if (instr->src.disp.type == DISP_NONE) {
+		/* Register operand */
+		uint64_t reg_val;
+		reg_val = state->gprs[instr->src.u.reg->num];
+		reg_val = __SHIFTOUT(reg_val, instr->src.u.reg->mask);
+		operand = (uint16_t)reg_val;
+	} else {
+		/* Memory operand */
+		memcpy(&operand, mem->data, sizeof(operand));
+	}
+
+	old_cr0 = state->crs[NVMM_X64_CR_CR0];
+	new_cr0 = (old_cr0 & ~0xFULL) | (operand & 0xF);
+
+	/* CR0.PE can be set but not cleared */
+	if (old_cr0 & CR0_PE)
+		new_cr0 |= CR0_PE;
+
+	state->crs[NVMM_X64_CR_CR0] = new_cr0;
+
+	return 0;
+}
+
+static int
+x86_func_mov_cr(const struct x86_instr *instr, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem __unused)
+{
+	struct nvmm_x64_state *state = vcpu->state;
+	uint64_t old_cr, new_cr;
+
+	if (state->segs[NVMM_X64_SEG_CS].attrib.dpl != 0) {
+		return EXCEPTION_GP;
+	}
+
+	if (instr->src.disp.type != DISP_NONE) {
+		DISASSEMBLER_BUG();
+	}
+	new_cr = state->gprs[instr->src.u.reg->num];
+	new_cr = __SHIFTOUT(new_cr, instr->src.u.reg->mask);
+
+	if (instr->regmodrm.reg == 0) {
+		uint64_t cr4;
+		cr4 = state->crs[NVMM_X64_CR_CR4];
+		/* PG=1 requires PE=1 */
+		if ((new_cr & CR0_PG) && !(new_cr & CR0_PE))
+			return EXCEPTION_GP;
+		/* NW=1 requires CD=1 */
+		if ((new_cr & CR0_NW) && !(new_cr & CR0_CD))
+			return EXCEPTION_GP;
+		/* Cannot set PG=0 when CR4.PCIDE=1 */
+		if (!(new_cr & CR0_PG) && (cr4 & CR4_PCIDE))
+			return EXCEPTION_GP;
+		state->crs[NVMM_X64_CR_CR0] = new_cr;
+		return 0;
+	} else if (instr->regmodrm.reg == 4) {
+		uint64_t cr0, cr3;
+		cr0 = state->crs[NVMM_X64_CR_CR0];
+		cr3 = state->crs[NVMM_X64_CR_CR3];
+		old_cr = state->crs[NVMM_X64_CR_CR4];
+		/* PAE: enabling requires CR3[4:0] be 0 */
+		if ((new_cr & CR4_PAE) && !(old_cr & CR4_PAE)) {
+			if (cr3 & 0x1F)
+				return EXCEPTION_GP;
+		}
+		/* PCIDE: enabling requires long mode and CR3[4:0] be 0 */
+		if ((new_cr & CR4_PCIDE) && !(old_cr & CR4_PCIDE)) {
+			if (!is_long_mode(state) || (cr3 & 0xFFF))
+				return EXCEPTION_GP;
+		}
+		/* LA57: changing require CR0.PG=0 */
+		if ((old_cr & CR4_LA57) != (new_cr & CR4_LA57)) {
+			if (cr0 & CR0_PG)
+				return -1;
+		}
+		state->crs[NVMM_X64_CR_CR4] = new_cr;
+		return 0;
+	} else {
+		return EXCEPTION_UD;
+	}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3433,6 +3576,93 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 out:
 	ret = nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_GPRS);
+	if (ret == -1)
+		return -1;
+
+	return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static void
+inject_exception(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
+    uint8_t vector, uint32_t error)
+{
+	struct nvmm_vcpu_event *event = vcpu->event;
+
+	event->type = NVMM_VCPU_EVENT_EXCP;
+	event->vector = vector;
+	event->u.excp.error = error;
+
+	nvmm_vcpu_inject(mach, vcpu);
+}
+
+int
+nvmm_assist_insn(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+{
+	struct nvmm_x64_state *state = vcpu->state;
+	struct nvmm_vcpu_exit *exit = vcpu->exit;
+	struct x86_instr instr;
+	struct nvmm_mem mem;
+	gvaddr_t gva;
+	uint8_t membuf[8];
+	uint8_t inst_bytes[15];
+	size_t inst_len;
+	int ret;
+
+	if (__predict_false(exit->reason != NVMM_VCPU_EXIT_INSN)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	ret = nvmm_vcpu_getstate(mach, vcpu,
+	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
+	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
+	if (ret == -1)
+		return -1;
+
+	inst_len = exit->u.insn.npc - state->gprs[NVMM_X64_GPR_RIP];
+	if (__predict_false(inst_len == 0 || inst_len > sizeof(inst_bytes))) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	ret = fetch_instruction(mach, vcpu, inst_bytes, inst_len);
+	if (ret == -1)
+		return -1;
+
+	ret = x86_decode(inst_bytes, inst_len, &instr, state);
+	if (ret == -1) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	memset(membuf, 0, sizeof(membuf));
+	mem.size = instr.operand_size;
+	mem.data = membuf;
+
+	if (instr.src.disp.type != DISP_NONE) {
+		/* Memory operand.  Fetch the data for emulation function. */
+		ret = store_to_gva(state, &instr, &instr.src, &gva, mem.size);
+		if (ret == -1)
+			return -1;
+		ret = read_guest_memory(mach, vcpu, gva, mem.data, mem.size);
+		if (ret == -1)
+			return -1;
+	}
+
+	ret = (*instr.emul->func)(&instr, vcpu, &mem);
+	if (ret == -1) {
+		return -1;
+	} else if (ret > 0) {
+		inject_exception(mach, vcpu, ret, 0);
+		return 0;
+	}
+
+	state->gprs[NVMM_X64_GPR_RIP] = exit->u.insn.npc;
+
+	ret = nvmm_vcpu_setstate(mach, vcpu,
+	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_CRS);
 	if (ret == -1)
 		return -1;
 

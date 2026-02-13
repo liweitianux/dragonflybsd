@@ -45,8 +45,9 @@
 /*
  * v1: Initial version
  * v2: Add nvmm_vcpu_stop() API
+ * v3: Add nvmm_assist_insn() API
  */
-#define NVMM_USER_VERSION	2
+#define NVMM_USER_VERSION	3
 
 struct nvmm_io;
 struct nvmm_mem;
@@ -128,6 +129,7 @@ int nvmm_gpa_to_hva(struct nvmm_machine *, gpaddr_t, uintptr_t *,
 
 int nvmm_assist_io(struct nvmm_machine *, struct nvmm_vcpu *);
 int nvmm_assist_mem(struct nvmm_machine *, struct nvmm_vcpu *);
+int nvmm_assist_insn(struct nvmm_machine *, struct nvmm_vcpu *);
 
 int nvmm_ctl(int, void *, size_t);
 

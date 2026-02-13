@@ -574,6 +574,10 @@ nvmm_gpa_to_hva(struct nvmm_machine *mach, gpaddr_t gpa, uintptr_t *hva,
  * nvmm_assist_mem(): architecture-specific.
  */
 
+/*
+ * nvmm_assist_insn(): architecture-specific.
+ */
+
 int
 nvmm_ctl(int op, void *data, size_t size)
 {
