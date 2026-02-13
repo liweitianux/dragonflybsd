@@ -3166,30 +3166,24 @@ fetch_segment(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 static int
 fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    struct nvmm_vcpu_exit *exit)
+    uint8_t *inst_bytes, size_t inst_len)
 {
 	struct nvmm_x64_state *state = vcpu->state;
-	size_t fetchsize;
 	gvaddr_t gva;
 	int ret;
-
-	fetchsize = sizeof(exit->u.mem.inst_bytes);
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
 	if (__predict_false(!is_long_mode(state))) {
 		ret = segment_check(&state->segs[NVMM_X64_SEG_CS], gva,
-		    fetchsize);
+		    inst_len);
 		if (ret == -1)
 			return -1;
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
 	}
 
-	ret = read_guest_memory(mach, vcpu, gva, exit->u.mem.inst_bytes,
-	    fetchsize);
+	ret = read_guest_memory(mach, vcpu, gva, inst_bytes, inst_len);
 	if (ret == -1)
 		return -1;
-
-	exit->u.mem.inst_len = fetchsize;
 
 	return 0;
 }
@@ -3391,7 +3385,9 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		 * The instruction was not fetched from the kernel. Fetch
 		 * it ourselves.
 		 */
-		ret = fetch_instruction(mach, vcpu, exit);
+		exit->u.mem.inst_len = sizeof(exit->u.mem.inst_bytes);
+		ret = fetch_instruction(mach, vcpu, exit->u.mem.inst_bytes,
+		    exit->u.mem.inst_len);
 		if (ret == -1)
 			return -1;
 	}
