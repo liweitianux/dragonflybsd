@@ -1166,6 +1166,7 @@ svm_read_gpr(struct svm_cpudata *cpudata, int num)
 {
 	struct vmcb *vmcb = cpudata->vmcb;
 
+	OS_ASSERT(num < 16);
 	if (num == NVMM_X64_GPR_RAX) {
 		return vmcb->state.rax;
 	} else if (num == NVMM_X64_GPR_RSP) {
@@ -1178,25 +1179,21 @@ svm_read_gpr(struct svm_cpudata *cpudata, int num)
 #define SVM_EXIT_CR_GPR		__BITS(3,0)	/* GPR number */
 #define SVM_EXIT_CR_MOV		__BIT(63)	/* instruction was MOV */
 
-static void
-svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
-    struct nvmm_vcpu_exit *exit)
+static bool
+svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t info, gpr, cr0, oldcr0, efer;
 
 	info = cpudata->vmcb->ctrl.exitinfo1;
-	if (__predict_false(!svm_decode_assist || !(info & SVM_EXIT_CR_MOV))) {
+	if (__predict_false(!(info & SVM_EXIT_CR_MOV))) {
 		/*
-		 * (1) DecodeAssists not available: cannot use EXITINFO1.
-		 *
-		 * (2) Instruction wasn't MOV; must be LMSW since we're
+		 * Instruction wasn't MOV; must be LMSW since we're
 		 * intercepting a selective CR0 write (changing any bits
 		 * other than CR0.TS or CR0.MP).
 		 */
-		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
-		return;
+		return false;
 	}
 
 	gpr = __SHIFTOUT(info, SVM_EXIT_CR_GPR);
@@ -1225,22 +1222,16 @@ svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR);
 	}
 
-	exit->reason = NVMM_VCPU_EXIT_NONE;
-	svm_inkernel_advance(cpudata->vmcb);
+	svm_inkernel_advance(vmcb);
+	return true;
 }
 
 static void
-svm_exit_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
-    struct nvmm_vcpu_exit *exit)
+svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t info, gpr, cr4, oldcr4;
-
-	if (__predict_false(!svm_decode_assist)) {
-		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
-		return;
-	}
 
 	info = cpudata->vmcb->ctrl.exitinfo1;
 	OS_ASSERT(info & SVM_EXIT_CR_MOV);
@@ -1258,8 +1249,37 @@ svm_exit_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR);
 	}
 
+	svm_inkernel_advance(vmcb);
+}
+
+static void
+svm_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
+    struct nvmm_vcpu_exit *exit)
+{
+	struct svm_cpudata *cpudata = vcpu->cpudata;
+	struct vmcb *vmcb = cpudata->vmcb;
+
 	exit->reason = NVMM_VCPU_EXIT_NONE;
-	svm_inkernel_advance(cpudata->vmcb);
+
+	if (__predict_false(!svm_decode_assist)) {
+		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
+		return;
+	}
+
+	switch (vmcb->ctrl.exitcode) {
+	case VMCB_EXITCODE_CR0_SEL_WRITE:
+		if (!svm_inkernel_handle_cr0(mach, vcpu)) {
+			svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
+			return;
+		}
+		break;
+	case VMCB_EXITCODE_CR4_WRITE:
+		svm_inkernel_handle_cr4(mach, vcpu);
+		break;
+	default:
+		svm_inject_gp(vcpu);
+		break;
+	}
 }
 
 #define SVM_EXIT_IO_PORT	__BITS(31,16)
@@ -1799,11 +1819,9 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			svm_event_waitexit_disable(vcpu, false);
 			exit->reason = NVMM_VCPU_EXIT_INT_READY;
 			break;
-		case VMCB_EXITCODE_CR4_WRITE:
-			svm_exit_cr4(mach, vcpu, exit);
-			break;
 		case VMCB_EXITCODE_CR0_SEL_WRITE:
-			svm_exit_cr0(mach, vcpu, exit);
+		case VMCB_EXITCODE_CR4_WRITE:
+			svm_exit_cr(mach, vcpu, exit);
 			break;
 		case VMCB_EXITCODE_IRET:
 			svm_event_waitexit_disable(vcpu, true);
