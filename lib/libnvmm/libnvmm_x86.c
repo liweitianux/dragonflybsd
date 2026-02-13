@@ -877,23 +877,25 @@ out:
 
 /* -------------------------------------------------------------------------- */
 
+struct x86_instr;
+
 struct x86_emul {
 	bool readreg;
 	bool backprop;
 	bool notouch;
-	void (*func)(struct nvmm_vcpu *, struct nvmm_mem *);
+	int (*func)(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
 };
 
-static void x86_func_or(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_and(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_xchg(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_sub(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_xor(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_cmp(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_test(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_mov(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_stos(struct nvmm_vcpu *, struct nvmm_mem *);
-static void x86_func_lods(struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_or(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_and(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_xchg(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_sub(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_xor(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_cmp(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_test(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_mov(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_stos(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
+static int x86_func_lods(const struct x86_instr *, struct nvmm_vcpu *, struct nvmm_mem *);
 
 static const struct x86_emul x86_emul_or = {
 	.readreg = true,
@@ -2748,8 +2750,9 @@ EXEC_DISPATCHER(xor)
  * is op1 and who is op2.
  */
 
-static void
-x86_func_or(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_or(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 	uint64_t *retval = (uint64_t *)mem->data;
@@ -2779,10 +2782,13 @@ x86_func_or(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_OR_MASK;
 	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_OR_MASK);
+
+	return 0;
 }
 
-static void
-x86_func_and(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_and(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 	uint64_t *retval = (uint64_t *)mem->data;
@@ -2812,10 +2818,13 @@ x86_func_and(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_AND_MASK;
 	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_AND_MASK);
+
+	return 0;
 }
 
-static void
-x86_func_xchg(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_xchg(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *op1, op2;
 
@@ -2834,10 +2843,13 @@ x86_func_xchg(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	/* Write op2 in op1. */
 	*op1 = op2;
+
+	return 0;
 }
 
-static void
-x86_func_sub(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_sub(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 	uint64_t *retval = (uint64_t *)mem->data;
@@ -2870,10 +2882,13 @@ x86_func_sub(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_SUB_MASK;
 	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_SUB_MASK);
+
+	return 0;
 }
 
-static void
-x86_func_xor(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_xor(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 	uint64_t *retval = (uint64_t *)mem->data;
@@ -2903,10 +2918,13 @@ x86_func_xor(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_XOR_MASK;
 	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_XOR_MASK);
+
+	return 0;
 }
 
-static void
-x86_func_cmp(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_cmp(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 	uint64_t *op1, *op2, fl;
@@ -2927,10 +2945,13 @@ x86_func_cmp(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_SUB_MASK;
 	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_SUB_MASK);
+
+	return 0;
 }
 
-static void
-x86_func_test(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_test(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 	uint64_t *op1, *op2, fl;
@@ -2951,19 +2972,25 @@ x86_func_test(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 
 	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_AND_MASK;
 	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_AND_MASK);
+
+	return 0;
 }
 
-static void
-x86_func_mov(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_mov(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	/*
 	 * Nothing special, just move without emulation.
 	 */
 	(*vcpu->cbs.mem)(mem);
+
+	return 0;
 }
 
-static void
-x86_func_stos(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_stos(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 
@@ -2977,10 +3004,13 @@ x86_func_stos(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 	} else {
 		gprs[NVMM_X64_GPR_RDI] += mem->size;
 	}
+
+	return 0;
 }
 
-static void
-x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
+static int
+x86_func_lods(const struct x86_instr *instr __unused, struct nvmm_vcpu *vcpu,
+    struct nvmm_mem *mem)
 {
 	uint64_t *gprs = vcpu->state->gprs;
 
@@ -2994,6 +3024,8 @@ x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem)
 	} else {
 		gprs[NVMM_X64_GPR_RSI] += mem->size;
 	}
+
+	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3216,6 +3248,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	struct nvmm_mem mem;
 	uint8_t membuf[8];
 	uint64_t val;
+	int ret;
 
 	memset(membuf, 0, sizeof(membuf));
 
@@ -3289,7 +3322,9 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		memcpy(mem.data, &val, mem.size);
 	}
 
-	(*instr->emul->func)(vcpu, &mem);
+	ret = (*instr->emul->func)(NULL, vcpu, &mem);
+	if (ret == -1)
+		return -1;
 
 	if (instr->emul->notouch) {
 		/* We're done. */
