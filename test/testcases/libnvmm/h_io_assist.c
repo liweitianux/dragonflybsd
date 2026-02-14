@@ -195,9 +195,11 @@ static void
 io_callback(struct nvmm_io *io)
 {
 	if (io->port != 123) {
-		printf("Wrong port\n");
-		exit(-1);
+		err(-1, "wrong port: %u", io->port);
 	}
+
+	printf("-> port = %u, size = %zu (%s)\n", io->port, io->size,
+	    io->in ? "in" : "out");
 
 	if (io->in) {
 		memcpy(io->data, iobuf + iobuf_off, io->size);
@@ -247,7 +249,7 @@ run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			return;
 
 		default:
-			printf("Invalid!\n");
+			printf("Invalid VMEXIT: 0x%lx\n", exit->reason);
 			return;
 		}
 	}

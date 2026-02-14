@@ -53,13 +53,14 @@ mem_callback(struct nvmm_mem *mem)
 	size_t off;
 
 	if (mem->gpa < 0x1000 || mem->gpa + mem->size > 0x1000 + PAGE_SIZE) {
-		printf("Out of page\n");
-		exit(-1);
+		err(-1, "out of page: gpa = %p, size = %zu",
+		    (void *)mem->gpa, mem->size);
 	}
 
 	off = mem->gpa - 0x1000;
 
-	printf("-> gpa = %p\n", (void *)mem->gpa);
+	printf("-> gpa = %p, size = %zu (%s)\n", (void *)mem->gpa, mem->size,
+	    mem->write ? "write" : "read");
 
 	if (mem->write) {
 		memcpy(mmiobuf + off, mem->data, mem->size);
