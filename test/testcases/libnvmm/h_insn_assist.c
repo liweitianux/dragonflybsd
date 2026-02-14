@@ -470,10 +470,17 @@ test_cr_instructions(void)
 {
 	struct nvmm_machine mach;
 	struct nvmm_vcpu vcpu;
+	struct nvmm_mach_conf_cr cr;
 	size_t i;
+
+	memset(&cr, 0, sizeof(cr));
+	cr.cr0_user = 1;
+	cr.cr4_user = 1;
 
 	if (nvmm_machine_create(&mach) == -1)
 		err(errno, "nvmm_machine_create");
+	if (nvmm_machine_configure(&mach, NVMM_MACH_CONF_CR, &cr) == -1)
+		err(errno, "nvmm_machine_configure");
 	if (nvmm_vcpu_create(&mach, 0, &vcpu) == -1)
 		err(errno, "nvmm_vcpu_create");
 
