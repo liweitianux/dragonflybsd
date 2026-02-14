@@ -60,7 +60,7 @@ handle_insn(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 }
 
 static void
-run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu, int *hits)
 {
 	struct nvmm_vcpu_exit *exit = vcpu->exit;
 
@@ -78,6 +78,7 @@ run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 		case NVMM_VCPU_EXIT_INSN:
 			handle_insn(mach, vcpu);
+			(*hits)++;
 			break;
 
 		case NVMM_VCPU_EXIT_SHUTDOWN:
@@ -101,11 +102,12 @@ struct cr_test {
 	uint64_t initial_cr4;
 	uint64_t wanted_cr0;
 	uint64_t wanted_cr4;
+	int hits;
 };
 
 static void
 run_cr_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    const struct cr_test *test)
+    struct cr_test *test)
 {
 	struct nvmm_x64_state *state = vcpu->state;
 	uint64_t final_cr0, final_cr4;
@@ -124,7 +126,7 @@ run_cr_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	memcpy(instbuf, test->code_begin, size);
 
-	run_machine(mach, vcpu);
+	run_machine(mach, vcpu, &test->hits);
 
 	if (nvmm_vcpu_getstate(mach, vcpu, NVMM_X64_STATE_CRS) == -1)
 		err(errno, "nvmm_vcpu_getstate");
@@ -132,10 +134,15 @@ run_cr_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	final_cr0 = state->crs[NVMM_X64_CR_CR0];
 	final_cr4 = state->crs[NVMM_X64_CR_CR4];
 
-	if (final_cr0 == test->wanted_cr0 && final_cr4 == test->wanted_cr4) {
-		printf("Test '%s' passed\n", test->name);
+	if (test->hits == 0) {
+		printf("Test '%s' not hit\n", test->name);
+		errx(-1, "%s failed", __func__);
+	} else if (final_cr0 == test->wanted_cr0 &&
+		   final_cr4 == test->wanted_cr4) {
+		printf("Test '%s' passed (hits=%d)\n", test->name, test->hits);
 	} else {
 		printf("Test '%s' failed:\n", test->name);
+		printf("  Hits: %d\n", test->hits);
 		if (final_cr0 != test->wanted_cr0) {
 			printf("  CR0: wanted 0x%lx, got 0x%lx\n",
 			    test->wanted_cr0, final_cr0);
@@ -144,7 +151,7 @@ run_cr_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 			printf("  CR4: wanted 0x%lx, got 0x%lx\n",
 			    test->wanted_cr4, final_cr4);
 		}
-		errx(-1, "run_cr_test failed");
+		errx(-1, "%s failed", __func__);
 	}
 }
 
@@ -165,7 +172,7 @@ extern uint8_t test_mov_cr4_basic_begin, test_mov_cr4_basic_end;
 extern uint8_t test_mov_cr4_pge_begin, test_mov_cr4_pge_end;
 extern uint8_t test_mov_cr_sequence_begin, test_mov_cr_sequence_end;
 
-static const struct cr_test cr_tests[] = {
+static struct cr_test cr_tests[] = {
 	{
 		.name = "LMSW - register AX",
 		.code_begin = &test_lmsw_reg1_begin,
