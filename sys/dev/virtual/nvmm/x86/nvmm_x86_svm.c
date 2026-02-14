@@ -575,8 +575,16 @@ static uint64_t svm_xcr0_mask __read_mostly;
 
 /* -------------------------------------------------------------------------- */
 
+static const size_t svm_mach_conf_sizes[NVMM_X86_MACH_NCONF] = {
+	[NVMM_MACH_CONF_MD(NVMM_MACH_CONF_CR)] =
+	    sizeof(struct nvmm_mach_conf_cr)
+};
+
 struct svm_machdata {
 	volatile uint64_t mach_htlb_gen;
+
+	/* Machine configuration. */
+	struct nvmm_mach_conf_cr cr;
 };
 
 static const size_t svm_vcpu_conf_sizes[NVMM_X86_VCPU_NCONF] = {
@@ -1182,9 +1190,14 @@ svm_read_gpr(struct svm_cpudata *cpudata, int num)
 static bool
 svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
+	struct svm_machdata *machdata = mach->machdata;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t info, gpr, cr0, oldcr0, efer;
+
+	if (__predict_false(machdata->cr.cr0_user)) {
+		return false;
+	}
 
 	info = cpudata->vmcb->ctrl.exitinfo1;
 	if (__predict_false(!(info & SVM_EXIT_CR_MOV))) {
@@ -1226,12 +1239,17 @@ svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	return true;
 }
 
-static void
+static bool
 svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
+	struct svm_machdata *machdata = mach->machdata;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t info, gpr, cr4, oldcr4;
+
+	if (__predict_false(machdata->cr.cr4_user)) {
+		return false;
+	}
 
 	info = cpudata->vmcb->ctrl.exitinfo1;
 	OS_ASSERT(info & SVM_EXIT_CR_MOV);
@@ -1250,6 +1268,7 @@ svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	}
 
 	svm_inkernel_advance(vmcb);
+	return true;
 }
 
 static void
@@ -1262,24 +1281,28 @@ svm_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->reason = NVMM_VCPU_EXIT_NONE;
 
 	if (__predict_false(!svm_decode_assist)) {
-		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
-		return;
+		goto out;
 	}
 
 	switch (vmcb->ctrl.exitcode) {
 	case VMCB_EXITCODE_CR0_SEL_WRITE:
 		if (!svm_inkernel_handle_cr0(mach, vcpu)) {
-			svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
-			return;
+			goto out;
 		}
 		break;
 	case VMCB_EXITCODE_CR4_WRITE:
-		svm_inkernel_handle_cr4(mach, vcpu);
+		if (!svm_inkernel_handle_cr4(mach, vcpu)) {
+			goto out;
+		}
 		break;
 	default:
 		svm_inject_gp(vcpu);
 		break;
 	}
+	return;
+
+out:
+	svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
 }
 
 #define SVM_EXIT_IO_PORT	__BITS(31,16)
@@ -2685,9 +2708,25 @@ svm_machine_destroy(struct nvmm_machine *mach)
 }
 
 static int
+svm_machine_configure_cr(struct svm_machdata *machdata, void *data)
+{
+	struct nvmm_mach_conf_cr *cr = data;
+
+	memcpy(&machdata->cr, cr, sizeof(*cr));
+	return 0;
+}
+
+static int
 svm_machine_configure(struct nvmm_machine *mach, uint64_t op, void *data)
 {
-	panic("%s: impossible", __func__);
+	struct svm_machdata *machdata = mach->machdata;
+
+	switch (op) {
+	case NVMM_MACH_CONF_MD(NVMM_MACH_CONF_CR):
+		return svm_machine_configure_cr(machdata, data);
+	default:
+		return EINVAL;
+	}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2880,7 +2919,8 @@ svm_fini(void)
 static void
 svm_capability(struct nvmm_capability *cap)
 {
-	cap->arch.mach_conf_support = 0;
+	cap->arch.mach_conf_support =
+	    NVMM_CAP_ARCH_MACH_CONF_CR;
 	cap->arch.vcpu_conf_support =
 	    NVMM_CAP_ARCH_VCPU_CONF_CPUID;
 	cap->arch.xcr0_mask = svm_xcr0_mask;
@@ -2895,7 +2935,7 @@ const struct nvmm_impl nvmm_x86_svm = {
 	.fini = svm_fini,
 	.capability = svm_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
-	.mach_conf_sizes = NULL,
+	.mach_conf_sizes = svm_mach_conf_sizes,
 	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,
 	.vcpu_conf_sizes = svm_vcpu_conf_sizes,
 	.state_size = sizeof(struct nvmm_x64_state),
