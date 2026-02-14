@@ -152,7 +152,7 @@ static const struct test tests[] = {
 	{ NULL, NULL, NULL, NULL, false }
 };
 
-int main(int argc, char *argv[])
+int main(int argc __unused, char *argv[] __unused)
 {
 	struct test_machine tmach;
 	size_t i;
