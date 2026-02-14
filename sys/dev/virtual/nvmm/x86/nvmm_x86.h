@@ -128,6 +128,7 @@ struct nvmm_x86_event {
 
 struct nvmm_cap_md {
 	uint64_t mach_conf_support;
+#define NVMM_CAP_ARCH_MACH_CONF_CR	__BIT(0)
 
 	uint64_t vcpu_conf_support;
 #define NVMM_CAP_ARCH_VCPU_CONF_CPUID	__BIT(0)
@@ -315,6 +316,16 @@ struct nvmm_x64_state {
 	struct nvmm_x64_state_fpu fpu;
 };
 #define nvmm_vcpu_state		nvmm_x64_state
+
+/* -------------------------------------------------------------------------- */
+
+#define NVMM_MACH_CONF_CR	NVMM_MACH_CONF_MD_BEGIN
+
+struct nvmm_mach_conf_cr {
+	uint32_t cr0_user:1;
+	uint32_t cr4_user:1;
+	uint32_t rsvd:30;
+};
 
 /* -------------------------------------------------------------------------- */
 

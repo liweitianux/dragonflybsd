@@ -35,7 +35,7 @@
 
 #include "nvmm_x86.h"
 
-#define NVMM_X86_MACH_NCONF	0
+#define NVMM_X86_MACH_NCONF	1
 #define NVMM_X86_VCPU_NCONF	2
 
 struct nvmm_x86_cpuid_mask {

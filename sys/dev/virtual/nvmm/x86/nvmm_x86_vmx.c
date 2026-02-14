@@ -812,8 +812,16 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 
 /* -------------------------------------------------------------------------- */
 
+static const size_t vmx_mach_conf_sizes[NVMM_X86_MACH_NCONF] = {
+	[NVMM_MACH_CONF_MD(NVMM_MACH_CONF_CR)] =
+	    sizeof(struct nvmm_mach_conf_cr)
+};
+
 struct vmx_machdata {
 	volatile uint64_t mach_htlb_gen;
+
+	/* Machine configuration. */
+	struct nvmm_mach_conf_cr cr;
 };
 
 static const size_t vmx_vcpu_conf_sizes[NVMM_X86_VCPU_NCONF] = {
@@ -1786,6 +1794,7 @@ static void
 vmx_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
 {
+	struct vmx_machdata *machdata = mach->machdata;
 	uint64_t qual;
 	int ret;
 
@@ -1795,9 +1804,15 @@ vmx_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	switch (__SHIFTOUT(qual, VMX_QUAL_CR_NUM)) {
 	case 0:
+		if (__predict_false(machdata->cr.cr0_user)) {
+			goto out;
+		}
 		ret = vmx_inkernel_handle_cr0(mach, vcpu, qual);
 		break;
 	case 4:
+		if (__predict_false(machdata->cr.cr4_user)) {
+			goto out;
+		}
 		ret = vmx_inkernel_handle_cr4(mach, vcpu, qual);
 		break;
 	case 8:
@@ -1811,6 +1826,10 @@ vmx_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	if (ret == -1) {
 		vmx_inject_gp(vcpu);
 	}
+	return;
+
+out:
+	vmx_exit_insn(exit, NVMM_VCPU_EXIT_INSN);
 }
 
 #define VMX_QUAL_IO_SIZE	__BITS(2,0)
@@ -3297,9 +3316,25 @@ vmx_machine_destroy(struct nvmm_machine *mach)
 }
 
 static int
+vmx_machine_configure_cr(struct vmx_machdata *machdata, void *data)
+{
+	struct nvmm_mach_conf_cr *cr = data;
+
+	memcpy(&machdata->cr, cr, sizeof(*cr));
+	return 0;
+}
+
+static int
 vmx_machine_configure(struct nvmm_machine *mach, uint64_t op, void *data)
 {
-	panic("%s: impossible", __func__);
+	struct vmx_machdata *machdata = mach->machdata;
+
+	switch (op) {
+	case NVMM_MACH_CONF_MD(NVMM_MACH_CONF_CR):
+		return vmx_machine_configure_cr(machdata, data);
+	default:
+		return EINVAL;
+	}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3699,7 +3734,8 @@ vmx_fini(void)
 static void
 vmx_capability(struct nvmm_capability *cap)
 {
-	cap->arch.mach_conf_support = 0;
+	cap->arch.mach_conf_support =
+	    NVMM_CAP_ARCH_MACH_CONF_CR;
 	cap->arch.vcpu_conf_support =
 	    NVMM_CAP_ARCH_VCPU_CONF_CPUID |
 	    NVMM_CAP_ARCH_VCPU_CONF_TPR;
@@ -3715,7 +3751,7 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.fini = vmx_fini,
 	.capability = vmx_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
-	.mach_conf_sizes = NULL,
+	.mach_conf_sizes = vmx_mach_conf_sizes,
 	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,
 	.vcpu_conf_sizes = vmx_vcpu_conf_sizes,
 	.state_size = sizeof(struct nvmm_x64_state),
