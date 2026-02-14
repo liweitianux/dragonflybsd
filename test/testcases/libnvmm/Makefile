@@ -1,4 +1,4 @@
-SUBDIR=	h_io_assist h_mem_assist
+SUBDIR=	h_insn_assist h_io_assist h_mem_assist
 
 .include <bsd.subdir.mk>
 
