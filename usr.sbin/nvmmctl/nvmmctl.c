@@ -98,7 +98,7 @@ usage(void)
 	/* NOTREACHED */
 }
 
-#define MACH_CONF_FLAGS		"\20"
+#define MACH_CONF_FLAGS		"\20" "\1" "CR"
 #define VCPU_CONF_FLAGS		"\20" "\1" "CPUID" "\2" "TPR"
 #define XCR0_FLAGS1		"\20" \
 	"\1" "x87"		"\2" "SSE"		"\3" "AVX"	\
