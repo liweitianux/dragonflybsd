@@ -262,7 +262,7 @@ static struct cr_test cr_tests[] = {
 		.wanted_cr4 = CR4_PAE | CR4_PGE,
 	},
 
-	{ NULL, NULL, NULL, 0, 0, 0, 0 },
+	{ NULL, NULL, NULL, 0, 0, 0, 0, 0 },
 };
 
 static void
@@ -289,7 +289,7 @@ test_cr_instructions(void)
 
 /* -------------------------------------------------------------------------- */
 
-int main(int argc, char *argv[])
+int main(int argc __unused, char *argv[] __unused)
 {
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");
