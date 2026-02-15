@@ -63,7 +63,7 @@ struct cr_test {
 	int hits;
 };
 
-static void
+static int
 run_cr_test(struct test_machine *tmach, struct cr_test *test)
 {
 	struct nvmm_machine *mach = &tmach->mach;
@@ -94,13 +94,14 @@ run_cr_test(struct test_machine *tmach, struct cr_test *test)
 	final_cr4 = state->crs[NVMM_X64_CR_CR4];
 
 	if (test->hits == 0) {
-		printf("Test '%s' not hit\n", test->name);
-		errx(-1, "%s failed", __func__);
+		printf("*** Test '%s' not hit\n", test->name);
+		return 1;
 	} else if (final_cr0 == test->wanted_cr0 &&
 		   final_cr4 == test->wanted_cr4) {
 		printf("Test '%s' passed (hits=%d)\n", test->name, test->hits);
+		return 0;
 	} else {
-		printf("Test '%s' failed:\n", test->name);
+		printf("*** Test '%s' failed:\n", test->name);
 		printf("  Hits: %d\n", test->hits);
 		if (final_cr0 != test->wanted_cr0) {
 			printf("  CR0: wanted 0x%lx, got 0x%lx\n",
@@ -110,7 +111,7 @@ run_cr_test(struct test_machine *tmach, struct cr_test *test)
 			printf("  CR4: wanted 0x%lx, got 0x%lx\n",
 			    test->wanted_cr4, final_cr4);
 		}
-		errx(-1, "%s failed", __func__);
+		return 1;
 	}
 }
 
@@ -265,11 +266,12 @@ static struct cr_test cr_tests[] = {
 	{ NULL, NULL, NULL, 0, 0, 0, 0, 0 },
 };
 
-static void
+static int
 test_cr_instructions(void)
 {
 	struct test_machine tmach;
 	size_t i;
+	int nfail;
 
 	memset(&tmach, 0, sizeof(tmach));
 	tmach.handle_insn = handle_insn;
@@ -279,22 +281,33 @@ test_cr_instructions(void)
 
 	create_machine(&tmach);
 
+	nfail = 0;
 	for (i = 0; cr_tests[i].name != NULL; i++) {
 		reset_machine(&tmach);
-		run_cr_test(&tmach, &cr_tests[i]);
+		nfail += run_cr_test(&tmach, &cr_tests[i]);
 	}
 
 	destroy_machine(&tmach);
+
+	return nfail;
 }
 
 /* -------------------------------------------------------------------------- */
 
 int main(int argc __unused, char *argv[] __unused)
 {
+	int nfail;
+
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");
 
-	test_cr_instructions();
+	nfail = test_cr_instructions();
 
-	return 0;
+	if (nfail == 0) {
+		printf("\nAll tests passed.\n");
+	} else {
+		printf("\n*** %d tests failed.\n", nfail);
+	}
+
+	return nfail;
 }
