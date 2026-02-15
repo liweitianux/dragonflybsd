@@ -81,7 +81,7 @@ struct test {
 	bool in;
 };
 
-static void
+static int
 run_test(struct test_machine *tmach, const struct test *test)
 {
 	size_t size;
@@ -110,10 +110,11 @@ run_test(struct test_machine *tmach, const struct test *test)
 
 	if (!strcmp(res, test->wanted)) {
 		printf("Test '%s' passed\n", test->name);
+		return 0;
 	} else {
-		printf("Test '%s' failed, wanted '%s', got '%s'\n",
+		printf("*** Test '%s' failed, wanted '%s', got '%s'\n",
 		    test->name, test->wanted, res);
-		errx(-1, "run_test failed");
+		return 1;
 	}
 }
 
@@ -156,6 +157,7 @@ int main(int argc __unused, char *argv[] __unused)
 {
 	struct test_machine tmach;
 	size_t i;
+	int nfail;
 
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");
@@ -167,12 +169,19 @@ int main(int argc __unused, char *argv[] __unused)
 
 	create_machine(&tmach);
 
+	nfail = 0;
 	for (i = 0; tests[i].name != NULL; i++) {
 		reset_machine(&tmach);
-		run_test(&tmach, &tests[i]);
+		nfail += run_test(&tmach, &tests[i]);
 	}
 
 	destroy_machine(&tmach);
 
-	return 0;
+	if (nfail == 0) {
+		printf("\nAll tests passed.\n");
+	} else {
+		printf("\n*** %d tests failed.\n", nfail);
+	}
+
+	return nfail;
 }

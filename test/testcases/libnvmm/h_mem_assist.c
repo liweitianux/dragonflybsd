@@ -81,7 +81,7 @@ struct test {
 	uint64_t off;
 };
 
-static void
+static int
 run_test(struct test_machine *tmach, const struct test *test)
 {
 	uint64_t *res;
@@ -97,10 +97,11 @@ run_test(struct test_machine *tmach, const struct test *test)
 	res = (uint64_t *)(mmiobuf + test->off);
 	if (*res == test->wanted) {
 		printf("Test '%s' passed\n", test->name);
+		return 0;
 	} else {
 		printf("Test '%s' failed, wanted 0x%lx, got 0x%lx\n",
 		    test->name, test->wanted, *res);
-		errx(-1, "run_test failed");
+		return 1;
 	}
 }
 
@@ -152,11 +153,12 @@ static const struct test tests64[] = {
 	{ NULL, NULL, NULL, -1, 0 }
 };
 
-static void
+static int
 test_vm64(void)
 {
 	struct test_machine tmach;
 	size_t i;
+	int nfail;
 
 	memset(&tmach, 0, sizeof(tmach));
 	tmach.callbacks.mem = mem_callback;
@@ -164,12 +166,15 @@ test_vm64(void)
 
 	create_machine(&tmach);
 
+	nfail = 0;
 	for (i = 0; tests64[i].name != NULL; i++) {
 		reset_machine(&tmach);
-		run_test(&tmach, &tests64[i]);
+		nfail += run_test(&tmach, &tests64[i]);
 	}
 
 	destroy_machine(&tmach);
+
+	return nfail;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -197,11 +202,12 @@ static const struct test tests16[] = {
 	{ NULL, NULL, NULL, -1, -1 }
 };
 
-static void
+static int
 test_vm16(void)
 {
 	struct test_machine tmach;
 	size_t i;
+	int nfail;
 
 	memset(&tmach, 0, sizeof(tmach));
 	tmach.is_16bit = true;
@@ -210,21 +216,37 @@ test_vm16(void)
 
 	create_machine(&tmach);
 
+	nfail = 0;
 	for (i = 0; tests16[i].name != NULL; i++) {
 		reset_machine(&tmach);
-		run_test(&tmach, &tests16[i]);
+		nfail += run_test(&tmach, &tests16[i]);
 	}
 
 	destroy_machine(&tmach);
+
+	return nfail;
 }
 
 /* -------------------------------------------------------------------------- */
 
 int main(int argc __unused, char *argv[] __unused)
 {
+	int nfail;
+
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");
-	test_vm64();
-	test_vm16();
-	return 0;
+
+	nfail = 0;
+	nfail += test_vm64();
+	printf("\n");
+	nfail += test_vm16();
+	printf("\n");
+
+	if (nfail == 0) {
+		printf("All tests passed.\n");
+	} else {
+		printf("*** %d tests failed.\n", nfail);
+	}
+
+	return nfail;
 }
