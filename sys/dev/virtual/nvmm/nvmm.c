@@ -511,7 +511,7 @@ nvmm_vcpu_setstate(struct nvmm_owner *owner,
 	if (error)
 		goto out;
 
-	(*nvmm_impl->vcpu_setstate)(vcpu);
+	(*nvmm_impl->vcpu_setstate)(mach, vcpu);
 	nvmm_vcpu_put(vcpu);
 
 out:
@@ -535,7 +535,7 @@ nvmm_vcpu_getstate(struct nvmm_owner *owner,
 	if (error)
 		goto out;
 
-	(*nvmm_impl->vcpu_getstate)(vcpu);
+	(*nvmm_impl->vcpu_getstate)(mach, vcpu);
 	nvmm_vcpu_put(vcpu);
 
 out:

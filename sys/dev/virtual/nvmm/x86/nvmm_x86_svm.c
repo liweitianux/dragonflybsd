@@ -483,8 +483,9 @@ CTASSERT(offsetof(struct vmcb, state) == 0x400);
 
 /* -------------------------------------------------------------------------- */
 
-static void svm_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
-static void svm_vcpu_state_commit(struct nvmm_cpu *);
+static void svm_vcpu_state_provide(struct nvmm_machine *, struct nvmm_cpu *,
+    uint64_t);
+static void svm_vcpu_state_commit(struct nvmm_machine *, struct nvmm_cpu *);
 
 /*
  * These host values are static, they do not change at runtime and are the same
@@ -1357,7 +1358,7 @@ svm_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->u.io.str = (info & SVM_EXIT_IO_STR) != 0;
 	exit->u.io.npc = nextpc;
 
-	svm_vcpu_state_provide(vcpu,
+	svm_vcpu_state_provide(mach, vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
 }
@@ -1450,7 +1451,7 @@ svm_exit_rdmsr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		return;
 	}
 
-	svm_vcpu_state_provide(vcpu, NVMM_X64_STATE_GPRS);
+	svm_vcpu_state_provide(mach, vcpu, NVMM_X64_STATE_GPRS);
 }
 
 static inline void
@@ -1473,7 +1474,7 @@ svm_exit_wrmsr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		return;
 	}
 
-	svm_vcpu_state_provide(vcpu, NVMM_X64_STATE_GPRS);
+	svm_vcpu_state_provide(mach, vcpu, NVMM_X64_STATE_GPRS);
 }
 
 static void
@@ -1509,7 +1510,7 @@ svm_exit_npf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	memcpy(exit->u.mem.inst_bytes, cpudata->vmcb->ctrl.inst_bytes,
 	    sizeof(exit->u.mem.inst_bytes));
 
-	svm_vcpu_state_provide(vcpu,
+	svm_vcpu_state_provide(mach, vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
 }
@@ -1724,7 +1725,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	int hcpu;
 	int error = 0;
 
-	svm_vcpu_state_commit(vcpu);
+	svm_vcpu_state_commit(mach, vcpu);
 	comm->state_cached = 0;
 
 #ifndef __DragonFly__
@@ -2061,7 +2062,7 @@ svm_state_gtlb_flush(const struct vmcb *vmcb,
 }
 
 static void
-svm_vcpu_setstate(struct nvmm_cpu *vcpu)
+svm_vcpu_setstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	const struct nvmm_x64_state *state = &comm->state;
@@ -2216,7 +2217,7 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 }
 
 static void
-svm_vcpu_getstate(struct nvmm_cpu *vcpu)
+svm_vcpu_getstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	struct nvmm_x64_state *state = &comm->state;
@@ -2321,18 +2322,19 @@ svm_vcpu_getstate(struct nvmm_cpu *vcpu)
 }
 
 static void
-svm_vcpu_state_provide(struct nvmm_cpu *vcpu, uint64_t flags)
+svm_vcpu_state_provide(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
+    uint64_t flags)
 {
 	vcpu->comm->state_wanted = flags;
-	svm_vcpu_getstate(vcpu);
+	svm_vcpu_getstate(mach, vcpu);
 }
 
 static void
-svm_vcpu_state_commit(struct nvmm_cpu *vcpu)
+svm_vcpu_state_commit(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	vcpu->comm->state_wanted = vcpu->comm->state_commit;
 	vcpu->comm->state_commit = 0;
-	svm_vcpu_setstate(vcpu);
+	svm_vcpu_setstate(mach, vcpu);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2517,7 +2519,7 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    sizeof(nvmm_x86_reset_state));
 	vcpu->comm->state_wanted = NVMM_X64_STATE_ALL;
 	vcpu->comm->state_cached = 0;
-	svm_vcpu_setstate(vcpu);
+	svm_vcpu_setstate(mach, vcpu);
 }
 
 static int
