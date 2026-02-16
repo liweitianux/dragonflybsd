@@ -562,6 +562,8 @@ static uint64_t svm_xcr0_mask __read_mostly;
 	 /* CR4_PKE excluded */		\
 	 /* CR4_CET excluded */		\
 	 /* bits 24:63 reserved on AMD */)
+#define CR4_INVALID \
+	(0xFFFFFFFFFFFFFFFFULL & ~CR4_VALID)
 
 /* Does not include EFER_LMSLE. */
 #define EFER_VALID \
@@ -1188,7 +1190,7 @@ svm_read_gpr(struct svm_cpudata *cpudata, int num)
 #define SVM_EXIT_CR_GPR		__BITS(3,0)	/* GPR number */
 #define SVM_EXIT_CR_MOV		__BIT(63)	/* instruction was MOV */
 
-static bool
+static int
 svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	struct svm_machdata *machdata = mach->machdata;
@@ -1197,7 +1199,7 @@ svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	uint64_t info, gpr, cr0, oldcr0, efer;
 
 	if (__predict_false(machdata->cr.cr0_user)) {
-		return false;
+		return 1;
 	}
 
 	info = cpudata->vmcb->ctrl.exitinfo1;
@@ -1207,7 +1209,7 @@ svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 		 * intercepting a selective CR0 write (changing any bits
 		 * other than CR0.TS or CR0.MP).
 		 */
-		return false;
+		return 1;
 	}
 
 	gpr = __SHIFTOUT(info, SVM_EXIT_CR_GPR);
@@ -1237,10 +1239,10 @@ svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	}
 
 	svm_inkernel_advance(vmcb);
-	return true;
+	return 0; /* handled */
 }
 
-static bool
+static int
 svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	struct svm_machdata *machdata = mach->machdata;
@@ -1249,7 +1251,7 @@ svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	uint64_t info, gpr, cr4, oldcr4;
 
 	if (__predict_false(machdata->cr.cr4_user)) {
-		return false;
+		return 1;
 	}
 
 	info = cpudata->vmcb->ctrl.exitinfo1;
@@ -1257,7 +1259,9 @@ svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 
 	gpr = __SHIFTOUT(info, SVM_EXIT_CR_GPR);
 	cr4 = svm_read_gpr(cpudata, gpr);
-	cr4 &= CR4_VALID;
+	if (cr4 & CR4_INVALID) {
+		return -1;
+	}
 
 	oldcr4 = vmcb->state.cr4;
 	if ((cr4 ^ oldcr4) & CR4_TLB_FLUSH) {
@@ -1269,7 +1273,7 @@ svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	}
 
 	svm_inkernel_advance(vmcb);
-	return true;
+	return 0; /* handled */
 }
 
 static void
@@ -1278,32 +1282,30 @@ svm_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
+	int ret;
 
 	exit->reason = NVMM_VCPU_EXIT_NONE;
 
-	if (__predict_false(!svm_decode_assist)) {
-		goto out;
+	if (__predict_true(svm_decode_assist)) {
+		switch (vmcb->ctrl.exitcode) {
+		case VMCB_EXITCODE_CR0_SEL_WRITE:
+			ret = svm_inkernel_handle_cr0(mach, vcpu);
+			break;
+		case VMCB_EXITCODE_CR4_WRITE:
+			ret = svm_inkernel_handle_cr4(mach, vcpu);
+			break;
+		default:
+			ret = -1;
+			break;
+		}
+	} else {
+		ret = 1;
 	}
 
-	switch (vmcb->ctrl.exitcode) {
-	case VMCB_EXITCODE_CR0_SEL_WRITE:
-		if (!svm_inkernel_handle_cr0(mach, vcpu)) {
-			goto out;
-		}
-		break;
-	case VMCB_EXITCODE_CR4_WRITE:
-		if (!svm_inkernel_handle_cr4(mach, vcpu)) {
-			goto out;
-		}
-		break;
-	default:
+	if (ret == -1)
 		svm_inject_gp(vcpu);
-		break;
-	}
-	return;
-
-out:
-	svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
+	else if (ret == 1)
+		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
 }
 
 #define SVM_EXIT_IO_PORT	__BITS(31,16)
