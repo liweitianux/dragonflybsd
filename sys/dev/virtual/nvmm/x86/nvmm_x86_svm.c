@@ -1198,7 +1198,7 @@ svm_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t info, gpr, cr0, oldcr0, efer;
 
-	if (__predict_false(machdata->cr.cr0_user)) {
+	if (__predict_false(machdata->cr.cr0_user || !svm_decode_assist)) {
 		return 1;
 	}
 
@@ -1250,7 +1250,7 @@ svm_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t info, gpr, cr4, oldcr4;
 
-	if (__predict_false(machdata->cr.cr4_user)) {
+	if (__predict_false(machdata->cr.cr4_user || !svm_decode_assist)) {
 		return 1;
 	}
 
@@ -1286,26 +1286,24 @@ svm_exit_cr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	exit->reason = NVMM_VCPU_EXIT_NONE;
 
-	if (__predict_true(svm_decode_assist)) {
-		switch (vmcb->ctrl.exitcode) {
-		case VMCB_EXITCODE_CR0_SEL_WRITE:
-			ret = svm_inkernel_handle_cr0(mach, vcpu);
-			break;
-		case VMCB_EXITCODE_CR4_WRITE:
-			ret = svm_inkernel_handle_cr4(mach, vcpu);
-			break;
-		default:
-			ret = -1;
-			break;
-		}
-	} else {
-		ret = 1;
+	switch (vmcb->ctrl.exitcode) {
+	case VMCB_EXITCODE_CR0_SEL_WRITE:
+		ret = svm_inkernel_handle_cr0(mach, vcpu);
+		break;
+	case VMCB_EXITCODE_CR4_WRITE:
+		ret = svm_inkernel_handle_cr4(mach, vcpu);
+		break;
+	default:
+		ret = -1;
+		break;
 	}
 
 	if (ret == -1)
 		svm_inject_gp(vcpu);
 	else if (ret == 1)
 		svm_exit_insn(vmcb, exit, NVMM_VCPU_EXIT_INSN);
+	else
+		OS_ASSERT(ret == 0);
 }
 
 #define SVM_EXIT_IO_PORT	__BITS(31,16)
