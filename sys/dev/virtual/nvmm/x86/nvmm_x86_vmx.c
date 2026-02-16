@@ -820,6 +820,8 @@ static const size_t vmx_mach_conf_sizes[NVMM_X86_MACH_NCONF] = {
 
 struct vmx_machdata {
 	volatile uint64_t mach_htlb_gen;
+	uint64_t cr0_mask;
+	uint64_t cr4_mask;
 
 	/* Machine configuration. */
 	struct nvmm_mach_conf_cr cr;
@@ -1656,6 +1658,7 @@ static int
 vmx_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint64_t qual)
 {
+	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	uint64_t type, gpr, oldcr0, realcr0, fakecr0;
 	uint64_t efer, ctls1;
@@ -1699,8 +1702,8 @@ vmx_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		vmx_vmwrite(VMCS_ENTRY_CTLS, ctls1);
 	}
 
-	oldcr0 = (vmx_vmread(VMCS_CR0_SHADOW) & CR0_STATIC_MASK) |
-	    (vmx_vmread(VMCS_GUEST_CR0) & ~CR0_STATIC_MASK);
+	oldcr0 = (vmx_vmread(VMCS_CR0_SHADOW) & machdata->cr0_mask) |
+	    (vmx_vmread(VMCS_GUEST_CR0) & ~machdata->cr0_mask);
 	if ((oldcr0 ^ fakecr0) & CR0_TLB_FLUSH) {
 		cpudata->gtlb_want_flush = true;
 	}
@@ -1715,6 +1718,7 @@ static int
 vmx_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint64_t qual)
 {
+	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	uint64_t type, gpr, oldcr4, cr4;
 
@@ -1740,11 +1744,13 @@ vmx_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		return -1;
 	}
 
-	oldcr4 = vmx_vmread(VMCS_GUEST_CR4);
+	oldcr4 = (vmx_vmread(VMCS_CR4_SHADOW) & machdata->cr4_mask) |
+	    (vmx_vmread(VMCS_GUEST_CR4) & ~machdata->cr4_mask);
 	if ((oldcr4 ^ gpr) & CR4_TLB_FLUSH) {
 		cpudata->gtlb_want_flush = true;
 	}
 
+	vmx_vmwrite(VMCS_CR4_SHADOW, cr4 & ~CR4_VMXE);
 	vmx_vmwrite(VMCS_GUEST_CR4, cr4);
 	vmx_inkernel_advance();
 	return 0;
@@ -2666,10 +2672,11 @@ vmx_state_gtlb_flush(const struct nvmm_x64_state *state, uint64_t flags)
 }
 
 static void
-vmx_vcpu_setstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
+vmx_vcpu_setstate(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	const struct nvmm_x64_state *state = &comm->state;
+	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct msr_entry *gmsr = cpudata->gmsr;
 	struct nvmm_x64_state_fpu *fpustate;
@@ -2707,8 +2714,9 @@ vmx_vcpu_setstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 	}
 
 	if (flags & NVMM_X64_STATE_CRS) {
+		/* Force ET=1 in read shadow for consistency. */
 		vmx_vmwrite(VMCS_CR0_SHADOW,
-		    (state->crs[NVMM_X64_CR_CR0] & CR0_STATIC_MASK) |
+		    (state->crs[NVMM_X64_CR_CR0] & machdata->cr0_mask) |
 		    CR0_ET);
 		vmx_vmwrite(VMCS_GUEST_CR0,
 		    (state->crs[NVMM_X64_CR_CR0] & ~CR0_FORCE_ZERO) |
@@ -2719,7 +2727,10 @@ vmx_vcpu_setstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 		/* XXX We are not handling PDPTE here. */
 		vmx_vmwrite(VMCS_GUEST_CR3, state->crs[NVMM_X64_CR_CR3]);
 
-		/* CR4_VMXE is mandatory. */
+		/* Hide CR4_VMXE from guest, but must set in real register. */
+		vmx_vmwrite(VMCS_CR4_SHADOW,
+		    (state->crs[NVMM_X64_CR_CR4] & machdata->cr4_mask) &
+		    ~CR4_VMXE);
 		vmx_vmwrite(VMCS_GUEST_CR4,
 		    (state->crs[NVMM_X64_CR_CR4] & CR4_VALID) | CR4_VMXE);
 
@@ -2832,10 +2843,11 @@ vmx_vcpu_setstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 }
 
 static void
-vmx_vcpu_getstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
+vmx_vcpu_getstate(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	struct nvmm_x64_state *state = &comm->state;
+	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct msr_entry *gmsr = cpudata->gmsr;
 	uint64_t intstate, flags;
@@ -2868,11 +2880,13 @@ vmx_vcpu_getstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 
 	if (flags & NVMM_X64_STATE_CRS) {
 		state->crs[NVMM_X64_CR_CR0] =
-		    (vmx_vmread(VMCS_CR0_SHADOW) & CR0_STATIC_MASK) |
-		    (vmx_vmread(VMCS_GUEST_CR0) & ~CR0_STATIC_MASK);
+		    (vmx_vmread(VMCS_CR0_SHADOW) & machdata->cr0_mask) |
+		    (vmx_vmread(VMCS_GUEST_CR0) & ~machdata->cr0_mask);
 		state->crs[NVMM_X64_CR_CR2] = cpudata->gcr2;
 		state->crs[NVMM_X64_CR_CR3] = vmx_vmread(VMCS_GUEST_CR3);
-		state->crs[NVMM_X64_CR_CR4] = vmx_vmread(VMCS_GUEST_CR4);
+		state->crs[NVMM_X64_CR_CR4] =
+		    (vmx_vmread(VMCS_CR4_SHADOW) & machdata->cr4_mask) |
+		    (vmx_vmread(VMCS_GUEST_CR4) & ~machdata->cr4_mask);
 		state->crs[NVMM_X64_CR_CR8] = cpudata->gcr8;
 		state->crs[NVMM_X64_CR_XCR0] = cpudata->gxcr0;
 
@@ -3000,6 +3014,7 @@ vmx_asid_free(struct nvmm_cpu *vcpu)
 static void
 vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
+	struct vmx_machdata *machdata = mach->machdata;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct vmcs *vmcs = cpudata->vmcs;
 	struct msr_entry *gmsr = cpudata->gmsr;
@@ -3060,12 +3075,8 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_ENTRY_MSR_LOAD_COUNT, vmx_msrlist_entry_nmsr);
 	vmx_vmwrite(VMCS_EXIT_MSR_STORE_COUNT, VMX_MSRLIST_EXIT_NMSR);
 
-	/* Set the CR0 mask. Any change of these bits causes a VMEXIT. */
-	vmx_vmwrite(VMCS_CR0_MASK, CR0_STATIC_MASK);
-
-	/* Force unsupported CR4 fields to zero. */
-	vmx_vmwrite(VMCS_CR4_MASK, CR4_INVALID);
-	vmx_vmwrite(VMCS_CR4_SHADOW, 0);
+	vmx_vmwrite(VMCS_CR0_MASK, machdata->cr0_mask);
+	vmx_vmwrite(VMCS_CR4_MASK, machdata->cr4_mask);
 
 	/* Set the Host state for resuming. */
 	vmx_vmwrite(VMCS_HOST_RIP, (uint64_t)(uintptr_t)vmx_resume_rip);
@@ -3309,6 +3320,9 @@ vmx_machine_create(struct nvmm_machine *mach)
 
 	/* Start with an hTLB flush everywhere. */
 	machdata->mach_htlb_gen = 1;
+
+	machdata->cr0_mask = CR0_STATIC_MASK;
+	machdata->cr4_mask = CR4_INVALID;
 }
 
 static void
@@ -3323,6 +3337,25 @@ vmx_machine_configure_cr(struct vmx_machdata *machdata, void *data)
 	struct nvmm_mach_conf_cr *cr = data;
 
 	memcpy(&machdata->cr, cr, sizeof(*cr));
+
+	if (machdata->cr.cr0_user) {
+		/*
+		 * Intercept all CR0 bits except CR0_TS and CR0_MP.  This
+		 * mirrors the SVM selective CR0 write intercept, and is
+		 * primarily intended for testing the userland delegation.
+		 */
+		machdata->cr0_mask = ~(CR0_TS | CR0_MP);
+	} else {
+		machdata->cr0_mask = CR0_STATIC_MASK;
+	}
+	if (machdata->cr.cr4_user) {
+		/* Intercept all CR4 bits for userland delegation. */
+		machdata->cr4_mask = 0xFFFFFFFFFFFFFFFFULL;
+	} else {
+		/* Force unsupported CR4 fields to zero. */
+		machdata->cr4_mask = CR4_INVALID;
+	}
+
 	return 0;
 }
 
