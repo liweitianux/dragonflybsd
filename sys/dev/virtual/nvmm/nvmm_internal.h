@@ -127,8 +127,8 @@ struct nvmm_impl {
 	int (*vcpu_create)(struct nvmm_machine *, struct nvmm_cpu *);
 	void (*vcpu_destroy)(struct nvmm_machine *, struct nvmm_cpu *);
 	int (*vcpu_configure)(struct nvmm_cpu *, uint64_t, void *);
-	void (*vcpu_setstate)(struct nvmm_cpu *);
-	void (*vcpu_getstate)(struct nvmm_cpu *);
+	void (*vcpu_setstate)(struct nvmm_machine *, struct nvmm_cpu *);
+	void (*vcpu_getstate)(struct nvmm_machine *, struct nvmm_cpu *);
 	int (*vcpu_inject)(struct nvmm_cpu *);
 	int (*vcpu_run)(struct nvmm_machine *, struct nvmm_cpu *,
 	    struct nvmm_vcpu_exit *);

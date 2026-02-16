@@ -616,8 +616,9 @@ vmx_sti(void)
 
 /* -------------------------------------------------------------------------- */
 
-static void vmx_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
-static void vmx_vcpu_state_commit(struct nvmm_cpu *);
+static void vmx_vcpu_state_provide(struct nvmm_machine *, struct nvmm_cpu *,
+    uint64_t);
+static void vmx_vcpu_state_commit(struct nvmm_machine *, struct nvmm_cpu *);
 
 /*
  * These host values are static, they do not change at runtime and are the same
@@ -1892,7 +1893,7 @@ vmx_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	rip = vmx_vmread(VMCS_GUEST_RIP);
 	exit->u.io.npc = rip + inslen;
 
-	vmx_vcpu_state_provide(vcpu,
+	vmx_vcpu_state_provide(mach, vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
 }
@@ -1999,7 +2000,7 @@ vmx_exit_rdmsr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	rip = vmx_vmread(VMCS_GUEST_RIP);
 	exit->u.rdmsr.npc = rip + inslen;
 
-	vmx_vcpu_state_provide(vcpu, NVMM_X64_STATE_GPRS);
+	vmx_vcpu_state_provide(mach, vcpu, NVMM_X64_STATE_GPRS);
 }
 
 static void
@@ -2025,7 +2026,7 @@ vmx_exit_wrmsr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	rip = vmx_vmread(VMCS_GUEST_RIP);
 	exit->u.wrmsr.npc = rip + inslen;
 
-	vmx_vcpu_state_provide(vcpu, NVMM_X64_STATE_GPRS);
+	vmx_vcpu_state_provide(mach, vcpu, NVMM_X64_STATE_GPRS);
 }
 
 static void
@@ -2081,7 +2082,7 @@ vmx_exit_epf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->u.mem.gpa = gpa;
 	exit->u.mem.inst_len = 0;
 
-	vmx_vcpu_state_provide(vcpu,
+	vmx_vcpu_state_provide(mach, vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
 }
@@ -2297,7 +2298,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	vmx_vmcs_enter(vcpu);
 
-	vmx_vcpu_state_commit(vcpu);
+	vmx_vcpu_state_commit(mach, vcpu);
 	comm->state_cached = 0;
 
 #ifndef __DragonFly__
@@ -2665,7 +2666,7 @@ vmx_state_gtlb_flush(const struct nvmm_x64_state *state, uint64_t flags)
 }
 
 static void
-vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
+vmx_vcpu_setstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	const struct nvmm_x64_state *state = &comm->state;
@@ -2831,7 +2832,7 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 }
 
 static void
-vmx_vcpu_getstate(struct nvmm_cpu *vcpu)
+vmx_vcpu_getstate(struct nvmm_machine *mach __unused, struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	struct nvmm_x64_state *state = &comm->state;
@@ -2934,18 +2935,19 @@ vmx_vcpu_getstate(struct nvmm_cpu *vcpu)
 }
 
 static void
-vmx_vcpu_state_provide(struct nvmm_cpu *vcpu, uint64_t flags)
+vmx_vcpu_state_provide(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
+    uint64_t flags)
 {
 	vcpu->comm->state_wanted = flags;
-	vmx_vcpu_getstate(vcpu);
+	vmx_vcpu_getstate(mach, vcpu);
 }
 
 static void
-vmx_vcpu_state_commit(struct nvmm_cpu *vcpu)
+vmx_vcpu_state_commit(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
 	vcpu->comm->state_wanted = vcpu->comm->state_commit;
 	vcpu->comm->state_commit = 0;
-	vmx_vcpu_setstate(vcpu);
+	vmx_vcpu_setstate(mach, vcpu);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3107,7 +3109,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    sizeof(nvmm_x86_reset_state));
 	vcpu->comm->state_wanted = NVMM_X64_STATE_ALL;
 	vcpu->comm->state_cached = 0;
-	vmx_vcpu_setstate(vcpu);
+	vmx_vcpu_setstate(mach, vcpu);
 
 	vmx_vmcs_leave(vcpu);
 }
