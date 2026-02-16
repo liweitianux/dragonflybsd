@@ -73,7 +73,7 @@ test_lmsw_reg1_begin:
 	/*
 	 * Test: LMSW with register AX
 	 */
-	movw	$(CR0_TS|CR0_MP|CR0_PE),%ax
+	movw	$(CR0_EM|CR0_PE),%ax
 	lmsw	%ax
 
 	TEST_END
@@ -84,7 +84,7 @@ test_lmsw_reg2_begin:
 	/*
 	 * Test: LMSW with register BX
 	 */
-	movw	$(CR0_TS|CR0_MP|CR0_PE),%bx
+	movw	$(CR0_EM|CR0_MP|CR0_PE),%bx
 	lmsw	%bx
 
 	TEST_END
@@ -107,7 +107,7 @@ test_lmsw_mem_begin:
 	 * Test: LMSW with memory operand
 	 */
 	movq	$DATA_PAGE,%rbx
-	movw	$(CR0_TS|CR0_MP|CR0_PE),(%rbx)
+	movw	$(CR0_EM|CR0_MP|CR0_PE),(%rbx)
 	lmsw	(%rbx)
 
 	TEST_END
@@ -119,7 +119,7 @@ test_lmsw_disp_begin:
 	 * Test: LMSW with displacement
 	 */
 	movq	$DATA_PAGE,%rax
-	movw	$(CR0_TS|CR0_MP|CR0_PE),16(%rax)
+	movw	$(CR0_EM|CR0_MP|CR0_PE),16(%rax)
 	lmsw	16(%rax)
 
 	TEST_END
@@ -132,7 +132,7 @@ test_lmsw_sib_begin:
 	 */
 	movq	$DATA_PAGE,%rbp
 	movq	$4,%rsi
-	movw	$(CR0_TS|CR0_MP|CR0_PE),(%rbp,%rsi,2)
+	movw	$(CR0_EM|CR0_MP|CR0_PE),(%rbp,%rsi,2)
 	lmsw	(%rbp,%rsi,2)
 
 	TEST_END
@@ -144,7 +144,7 @@ test_lmsw_indirect_begin:
 	 * Test: LMSW with indirect memory access
 	 */
 	movq	$DATA_PAGE,%rdi
-	movw	$(CR0_TS|CR0_MP),(%rdi)
+	movw	$(CR0_EM|CR0_MP),(%rdi)
 	lmsw	(%rdi)
 
 	TEST_END
@@ -160,7 +160,7 @@ test_lmsw_riprel_begin:
 
 	.align	2
 lmsw_data:
-	.word	(CR0_TS|CR0_MP)
+	.word	(CR0_EM|CR0_MP)
 
 .Lmsw_end:
 	TEST_END

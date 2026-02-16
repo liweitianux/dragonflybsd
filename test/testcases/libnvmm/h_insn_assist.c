@@ -137,9 +137,9 @@ static struct cr_test cr_tests[] = {
 		.name = "LMSW - register AX",
 		.code_begin = &test_lmsw_reg1_begin,
 		.code_end = &test_lmsw_reg1_end,
-		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE,
+		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_TS,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE | CR0_EM,
 		.wanted_cr4 = CR4_PAE,
 	},
 	{
@@ -148,14 +148,14 @@ static struct cr_test cr_tests[] = {
 		.code_end = &test_lmsw_reg2_end,
 		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_TS,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_EM,
 		.wanted_cr4 = CR4_PAE,
 	},
 	{
 		.name = "LMSW - cannot clear PE",
 		.code_begin = &test_lmsw_pe_begin,
 		.code_end = &test_lmsw_pe_end,
-		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE,
+		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE | CR0_EM,
 		.initial_cr4 = CR4_PAE,
 		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE,
 		.wanted_cr4 = CR4_PAE,
@@ -166,7 +166,7 @@ static struct cr_test cr_tests[] = {
 		.code_end = &test_lmsw_mem_end,
 		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_TS,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_EM,
 		.wanted_cr4 = CR4_PAE,
 	},
 	{
@@ -175,7 +175,7 @@ static struct cr_test cr_tests[] = {
 		.code_end = &test_lmsw_disp_end,
 		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_TS,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_EM,
 		.wanted_cr4 = CR4_PAE,
 	},
 	{
@@ -184,7 +184,7 @@ static struct cr_test cr_tests[] = {
 		.code_end = &test_lmsw_sib_end,
 		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_TS,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_MP|CR0_PE | CR0_EM,
 		.wanted_cr4 = CR4_PAE,
 	},
 	{
@@ -193,7 +193,7 @@ static struct cr_test cr_tests[] = {
 		.code_end = &test_lmsw_indirect_end,
 		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE | CR0_TS|CR0_MP,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE | CR0_EM|CR0_MP,
 		.wanted_cr4 = CR4_PAE,
 	},
 	{
@@ -202,7 +202,7 @@ static struct cr_test cr_tests[] = {
 		.code_end = &test_lmsw_riprel_end,
 		.initial_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE,
 		.initial_cr4 = CR4_PAE,
-		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE | CR0_TS|CR0_MP,
+		.wanted_cr0 = CR0_PG|CR0_NE|CR0_ET|CR0_PE | CR0_EM|CR0_MP,
 		.wanted_cr4 = CR4_PAE,
 	},
 
