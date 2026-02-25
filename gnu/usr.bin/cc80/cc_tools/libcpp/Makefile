@@ -13,7 +13,7 @@ CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}
 GOOD_CONFIG=	${.CURDIR}/../../support-libs/libcpp/config.h
 
-CFLAGS+=	-DBOOTSTRAPPING
+CFLAGS+=	-DHAVE_ICONV=0
 
 SRCS=		charset.c \
 		directives-only.c \

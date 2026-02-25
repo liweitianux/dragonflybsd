@@ -11,7 +11,7 @@ CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}
 
 .if defined(BOOTSTRAPPING)
-CFLAGS+=	-DBOOTSTRAPPING
+CFLAGS+=	-DHAVE_ICONV=0
 .endif
 
 CXX_BUILD=	charset.c \
