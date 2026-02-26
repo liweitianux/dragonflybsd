@@ -41,7 +41,7 @@
 
 /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
    */
-/* #undef HAVE_ALLOCA_H */
+#define HAVE_ALLOCA_H 1
 
 /* Define to 1 if you have the `clearerr_unlocked' function. */
 #define HAVE_CLEARERR_UNLOCKED 1
@@ -144,7 +144,7 @@
 #define HAVE_FERROR_UNLOCKED 1
 
 /* Define to 1 if you have the `fflush_unlocked' function. */
-/* #undef HAVE_FFLUSH_UNLOCKED */
+#define HAVE_FFLUSH_UNLOCKED 1
 
 /* Define to 1 if you have the `fgetc_unlocked' function. */
 /* #undef HAVE_FGETC_UNLOCKED */
@@ -159,16 +159,16 @@
 /* #undef HAVE_FPRINTF_UNLOCKED */
 
 /* Define to 1 if you have the `fputc_unlocked' function. */
-/* #undef HAVE_FPUTC_UNLOCKED */
+#define HAVE_FPUTC_UNLOCKED 1
 
 /* Define to 1 if you have the `fputs_unlocked' function. */
-/* #undef HAVE_FPUTS_UNLOCKED */
+#define HAVE_FPUTS_UNLOCKED 1
 
 /* Define to 1 if you have the `fread_unlocked' function. */
-/* #undef HAVE_FREAD_UNLOCKED */
+#define HAVE_FREAD_UNLOCKED 1
 
 /* Define to 1 if you have the `fwrite_unlocked' function. */
-/* #undef HAVE_FWRITE_UNLOCKED */
+#define HAVE_FWRITE_UNLOCKED 1
 
 /* Define to 1 if you have the `getchar_unlocked' function. */
 #define HAVE_GETCHAR_UNLOCKED 1
@@ -177,9 +177,7 @@
 #define HAVE_GETC_UNLOCKED 1
 
 /* Define if you have the iconv() function. */
-#ifndef BOOTSTRAPPING
 #define HAVE_ICONV 1
-#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -265,6 +263,12 @@
 /* Define to the version of this package. */
 #define PACKAGE_VERSION " "
 
+/* The size of `dev_t', as computed by sizeof. */
+#define SIZEOF_DEV_T 4
+
+/* The size of `ino_t', as computed by sizeof. */
+#define SIZEOF_INO_T 8
+
 /* The size of `int', as computed by sizeof. */
 #define SIZEOF_INT 4
 
@@ -323,6 +327,11 @@
 # ifndef WORDS_BIGENDIAN
 /* #  undef WORDS_BIGENDIAN */
 # endif
+#endif
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */

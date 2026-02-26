@@ -11,15 +11,27 @@ CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}
 
 .if defined(BOOTSTRAPPING)
-CFLAGS+=	-DBOOTSTRAPPING
+CFLAGS+=	-DHAVE_ICONV=0
 .endif
 
-# From libcpp/Makefile.in (libcpp_a_OBJS)
-OBJS= charset.o directives.o errors.o \
-	expr.o files.o identifiers.o init.o lex.o line-map.o macro.o \
-	mkdeps.o pch.o symtab.o traditional.o
+# From libcpp/Makefile.in (libcpp_a_SOURCES)
+SRCS=		charset.cc \
+		directives.cc \
+		errors.cc \
+		expr.cc \
+		files.cc \
+		identifiers.cc \
+		init.cc \
+		lex.cc \
+		line-map.cc \
+		macro.cc \
+		mkdeps.cc \
+		pch.cc \
+		symtab.cc \
+		traditional.cc
 
-${OBJS}: localedir.h
+# generated
+SRCS+= localedir.h
 
 localedir.h:
 	touch $@
