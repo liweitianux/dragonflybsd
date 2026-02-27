@@ -1,6 +1,6 @@
 .include "../Makefile.inc"
-.include "../Makefile.langs"
-.include "../../Makefile.cco"
+.include "../../Makefile.langs"
+.include "../../../Makefile.cco"
 
 PROG_CXX=	gcov
 MFILE=		gcov${MANPAGEVER}.1
