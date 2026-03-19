@@ -156,10 +156,10 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
 	-> ${.TARGET}
 .if ${${_FG}_FLAGS_FILES:M*.[csS]} != ""
 	${_MKDEPENV} CC=${MKDEPCC} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${${_FG}_FLAGS} \
 	    ${CFLAGS:M--sysroot=*} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
 	    ${CFLAGS:M-std=*} \
+	    ${${_FG}_FLAGS} \
 	    ${.ALLSRC:M*.[csS]}
 .endif
 .if ${${_FG}_FLAGS_FILES:M*.cc} != "" || \
@@ -167,17 +167,17 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
     ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cxx} != ""
 	${_MKDEPENV} CC=${CXX} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${${_FG}_FLAGS} \
 	    ${CXXFLAGS:M--sysroot=*} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
 	    ${CXXFLAGS:M-std=*} \
+	    ${${_FG}_FLAGS} \
 	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.C} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
 .endif
 .if ${${_FG}_FLAGS_FILES:M*.m} != ""
 	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${${_FG}_FLAGS} \
 	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
 	    ${OBJCFLAGS:M-Wno-import*} \
+	    ${${_FG}_FLAGS} \
 	    ${.ALLSRC:M*.m}
 .endif
 .if !empty(${_FG:M_}) && !empty(_DEPENDFILES)

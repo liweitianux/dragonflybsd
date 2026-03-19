@@ -213,35 +213,35 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	chmod a+x ${.TARGET}
 
 .c:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_${.IMPSRC:T}_FLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .c.o:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC}
+	${CC} ${CFLAGS} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC}
 
 .cc .cpp .cxx .C:
-	${CXX} ${_${.IMPSRC:T}_FLAGS} ${CXXFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
+	${CXX} ${CXXFLAGS} ${_${.IMPSRC:T}_FLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .cc.o .cpp.o .cxx.o .C.o:
-	${CXX} ${_${.IMPSRC:T}_FLAGS} ${CXXFLAGS} -c ${.IMPSRC}
+	${CXX} ${CXXFLAGS} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC}
 
 .m.o:
-	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} -c ${.IMPSRC}
+	${OBJC} ${OBJCFLAGS} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC}
 
 .p.o:
-	${PC} ${_${.IMPSRC:T}_FLAGS} ${PFLAGS} -c ${.IMPSRC}
+	${PC} ${PFLAGS} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC}
 
 .e .r .F .f:
-	${FC} ${_${.IMPSRC:T}_FLAGS} ${RFLAGS} ${EFLAGS} ${FFLAGS} ${LDFLAGS} \
+	${FC} ${RFLAGS} ${EFLAGS} ${FFLAGS} ${_${.IMPSRC:T}_FLAGS} ${LDFLAGS} \
 	    ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .e.o .r.o .F.o .f.o:
-	${FC} ${_${.IMPSRC:T}_FLAGS} ${RFLAGS} ${EFLAGS} ${FFLAGS} -c ${.IMPSRC}
+	${FC} ${RFLAGS} ${EFLAGS} ${FFLAGS} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC}
 
 .S.o:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC}
+	${CC} ${CFLAGS} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC}
 
 .s.o:
-	${AS} ${_${.IMPSRC:T}_FLAGS} ${AFLAGS} -o ${.TARGET} ${.IMPSRC}
+	${AS} ${AFLAGS} ${_${.IMPSRC:T}_FLAGS} -o ${.TARGET} ${.IMPSRC}
 
 # XXX not -j safe
 .y.o:
@@ -257,10 +257,10 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 # .no == native object file, for helper code when cross building.
 #
 .c.no:
-	${NXCC} ${_${.IMPSRC:T}_FLAGS} ${NXCFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCC} ${NXCFLAGS:N-flto} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.no .C.no .cpp.no .cxx.no:
-	${NXCXX} ${_${.IMPSRC:T}_FLAGS} ${NXCXXFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCXX} ${NXCXXFLAGS:N-flto} ${_${.IMPSRC:T}_FLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .y.no:
 	${YACC} ${YFLAGS} ${.IMPSRC}
@@ -273,7 +273,7 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	rm -f ${.TARGET}.c
 
 .no.nx .c.nx:
-	${NXCC} ${_${.IMPSRC:T}_FLAGS} ${NXCFLAGS} ${NXLDFLAGS} ${.IMPSRC} \
+	${NXCC} ${NXCFLAGS} ${_${.IMPSRC:T}_FLAGS} ${NXLDFLAGS} ${.IMPSRC} \
 	    ${NXLDLIBS} -o ${.TARGET}
 
 # XXX not -j safe
@@ -285,10 +285,10 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	${LEX} -t ${LFLAGS} ${.IMPSRC} > ${.TARGET}
 
 .s.out .c.out .o.out:
-	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_${.IMPSRC:T}_FLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .f.out .F.out .r.out .e.out:
-	${FC} ${_${.IMPSRC:T}_FLAGS} ${EFLAGS} ${RFLAGS} ${FFLAGS} ${LDFLAGS} \
+	${FC} ${EFLAGS} ${RFLAGS} ${FFLAGS} ${_${.IMPSRC:T}_FLAGS} ${LDFLAGS} \
 	    ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 	rm -f ${.PREFIX}.o
 

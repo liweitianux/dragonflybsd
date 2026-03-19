@@ -10,12 +10,12 @@ NO_WERROR=
 .SUFFIXES: .out .no .c .cc .cpp .cxx .C .y .l
 
 .c.no:
-	${NXCC} ${_${.IMPSRC}_FLAGS} ${NXCFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCC} ${NXCFLAGS:N-flto} ${_${.IMPSRC}_FLAGS} -c ${.IMPSRC} -o ${.TARGET}
 	@${NXLD} -o ${.TARGET}.tmp -x -r ${.TARGET}
 	@mv ${.TARGET}.tmp ${.TARGET}
 
 .cc.no .C.no .cpp.no .cxx.no:
-	${NXCXX} ${_${.IMPSRC}_FLAGS} ${NXCXXFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCXX} ${NXCXXFLAGS:N-flto} ${_${.IMPSRC}_FLAGS} -c ${.IMPSRC} -o ${.TARGET}
 	@${NXLD} -o ${.TARGET}.tmp -x -r ${.TARGET}
 	@mv ${.TARGET}.tmp ${.TARGET}
 
