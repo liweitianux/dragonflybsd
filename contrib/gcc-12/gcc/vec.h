@@ -1303,7 +1303,8 @@ template<typename T, typename A>
 inline size_t
 vec<T, A, vl_embed>::embedded_size (unsigned alloc)
 {
-  struct alignas (T) U { char data[sizeof (T)]; };
+  // struct alignas (T) U { char data[sizeof (T)]; };
+  struct U { char data[sizeof (T)]; } __attribute__((aligned(__alignof__(T))));
   typedef vec<U, A, vl_embed> vec_embedded;
   typedef typename std::conditional<std::is_standard_layout<T>::value,
 				    vec, vec_embedded>::type vec_stdlayout;

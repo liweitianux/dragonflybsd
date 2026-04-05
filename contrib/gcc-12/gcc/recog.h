@@ -403,7 +403,12 @@ struct insn_gen_fn
   template<typename ...Ts>
   rtx_insn *operator() (Ts... args) const
   {
+#if __GNUC__ < 5
+    // error: too few arguments to function
+    typedef rtx_insn *(*funcptr) (...);
+#else
     typedef rtx_insn *(*funcptr) (decltype ((void) args, NULL_RTX)...);
+#endif
     return ((funcptr) func) (args...);
   }
 

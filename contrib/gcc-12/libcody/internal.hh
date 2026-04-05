@@ -72,7 +72,7 @@ public:
   }
 };
 
-void HCF [[noreturn]]
+void HCF // __attribute__((noreturn)) // [[noreturn]]
 (
  char const *msg
 #if NMS_CHECKING

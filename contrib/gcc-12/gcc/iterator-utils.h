@@ -178,7 +178,11 @@ private:
   using parent = wrapper_iterator<T *>;
 
 public:
+#if __GNUC__ >= 5
   using parent::parent;
+#else
+  list_iterator(T *p) : parent(p) {}
+#endif
   list_iterator &operator++ ();
   list_iterator operator++ (int);
 };
