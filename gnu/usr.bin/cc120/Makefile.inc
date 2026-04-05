@@ -55,6 +55,10 @@ FLAGS+=		-DCTOOLS
 
 CFLAGS+=	${FLAGS}
 
+.if ${CCVER} == "gcc47"
+CXXFLAGS+=	-std=gnu++11
+.endif
+
 .include "Makefile.tgt"
 
 .if ${TARGET_ARCH} != ${MACHINE_ARCH}
