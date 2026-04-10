@@ -155,10 +155,7 @@
 /* #undef HAVE_ICONV */
 
 /* Define to 1 if you have the <immintrin.h> header file. */
-/* Disable for gcc47, but allow for newer clangs. */
-#if defined(__clang__) || (__GNUC__ > 4)
 #define HAVE_IMMINTRIN_H 1
-#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
