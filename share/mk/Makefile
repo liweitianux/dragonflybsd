@@ -3,7 +3,6 @@
 
 FILES=	bsd.README
 FILES+=	bsd.cpu.mk bsd.cpu.custom.mk
-FILES+=	bsd.cpu.gcc47.mk
 FILES+=	bsd.cpu.gcc80.mk
 FILES+=	bsd.cpu.gcc120.mk
 FILES+=	bsd.crunchgen.mk

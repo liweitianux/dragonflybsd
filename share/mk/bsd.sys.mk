@@ -39,7 +39,7 @@ _cnowarnflags=
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc80")
+.   if !defined(NO_WERROR) && ${_WCCVER} == "gcc80"
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -99,14 +99,6 @@ _cnowarnflags	+=	-Wno-unused-value
 .  if ${WARNS} == 3 && ${_gccver} >= 80
 _cnowarnflags	+=	-Wno-implicit-fallthrough
 .  endif
-.  if ${WARNS} >= 2 && ${_WCCVER:Mgcc4[789]}
-_cnowarnflags	+=	-Wno-error=maybe-uninitialized\
-			-Wno-error=uninitialized\
-			-Wno-error=shadow
-.  endif
-.  if ${WARNS} >= 3 && ${_WCCVER:Mgcc4[789]}
-_cnowarnflags	+=	-Wno-error=missing-field-initializers
-.  endif
 # Disable -Werror selectively for -Os and -Og compilations.  Both -Winline and
 # -Wmaybe-uninitialized are noisy and should be caught by standard -O and -O2.
 # These are still useful diagnostics while investigating compilation issues.
@@ -126,7 +118,7 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2
-.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc80")
+.   if !defined(NO_WERROR) && ${_WCCVER} == "gcc80"
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif

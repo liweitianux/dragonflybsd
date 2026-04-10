@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd April 5, 2026
+.Dd April 10, 2026
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -118,9 +118,8 @@ We currently recommend that an override NOT be set in
 Currently accepted values for compilers which are part of
 .Dx
 are
-.Dq gcc47 ,
 .Dq gcc80
-(default), and
+(default) and
 .Dq gcc120 .
 All other values will handled according to the settings in
 .Xr compilers.conf 5 .
@@ -386,7 +385,7 @@ Set to build modules with the system instead of the kernel.
 Set to not build the alternative (non-default) set of binutils.
 .It Va NO_ALTCOMPILER
 .Pq Vt bool
-Set to not build the designated secondary compiler (GCC 4.7 and others).
+Set to not build the alternative (non-default) compilers.
 .It Va NO_CVS
 .Pq Vt bool
 Set to not build CVS.
