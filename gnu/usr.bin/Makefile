@@ -27,10 +27,6 @@ SUBDIR+= cc80
 _compiler_dir= cc80
 
 .if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47}
-SUBDIR+= cc47
-_altcompiler_dirs+= cc47
-. endif
 . if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
 SUBDIR+= cc120
 _altcompiler_dirs+= cc120

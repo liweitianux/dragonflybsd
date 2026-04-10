@@ -3,9 +3,6 @@
 SUBDIR+= gcc80
 
 .if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47}
-SUBDIR+= gcc47
-. endif
 . if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
 SUBDIR+= gcc120
 . endif
