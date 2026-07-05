@@ -61,6 +61,7 @@ SUBDIR= 802_11 \
 	memcontrol \
 	mergemaster \
 	mfiutil \
+	microvm \
 	mixer \
 	mld6query \
 	mlxcontrol \

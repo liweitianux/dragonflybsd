@@ -1,0 +1,123 @@
+.\" Copyright (c) 2026 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.Dd July 6, 2026
+.Dt MICROVM 8
+.Os
+.Sh NAME
+.Nm microvm
+.Nd boot a PVH kernel as a lightweight NVMM microVM
+.Sh SYNOPSIS
+.Nm
+.Fl k Ar kernel
+.Op Fl i Ar initramfs
+.Op Fl c Ar cmdline
+.Op Fl m Ar ram_MiB
+.Op Fl p Ar ncpus
+.Op Fl d Ar disk.img
+.Op Fl V
+.Op Fl n Ar /dev/tapN
+.Op Fl s Ar [cid@]uds_path
+.Op Fl D
+.Op Fl L
+.Sh DESCRIPTION
+.Nm
+boots a PVH-capable kernel
+.Pq Linux Dv CONFIG_PVH=y
+as a microVM on top of
+.Xr nvmm 4 ,
+using
+.Xr libmicrovm 3 .
+It is a thin front-end that builds a configuration from the options below and
+runs the guest until it shuts down.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl k Ar kernel
+Path to a PVH
+.Pa vmlinux
+(required).
+.It Fl i Ar initramfs
+Optional cpio
+.Pq Pa .gz
+initramfs.
+.It Fl c Ar cmdline
+Kernel command line.
+A
+.Li virtio_mmio.device=
+descriptor is appended automatically for each attached device.
+.It Fl m Ar ram_MiB
+Guest RAM size in MiB
+.Pq default 256 .
+.It Fl p Ar ncpus
+Number of vCPUs
+.Pq default 1 .
+.It Fl d Ar disk.img
+Attach a file as a virtio-blk device
+.Pq Pa /dev/vda .
+.It Fl V
+Attach a virtio-console device
+.Pq Pa hvc0 ;
+host stdin/stdout are wired to the guest console.
+.It Fl n Ar /dev/tapN
+Attach a virtio-net device backed by the given host tap interface
+.Pq Pa eth0 .
+.It Fl s Ar [cid@]uds_path
+Attach a virtio-vsock device; the guest is given context id
+.Ar cid
+.Pq default 3 .
+Guest streams to host port
+.Ar P
+are bridged to the
+.Dv AF_UNIX
+socket
+.Ar uds_path Ns _ Ns Ar P .
+.It Fl D
+Print device and vCPU-exit diagnostics to stderr.
+.It Fl L
+Present the virtio devices using the legacy (version 1) virtio-mmio
+interface instead of the modern (version 2) one.
+Needed by guests whose virtio-mmio driver is v1-only;
+Linux supports both.
+.El
+.Sh EXAMPLES
+Boot a kernel with an ext4 root over virtio-blk:
+.Bd -literal -offset indent
+microvm -k vmlinux -m 512 -d rootfs.img \e
+    -c "console=ttyS0 root=/dev/vda rw"
+.Ed
+.Sh SEE ALSO
+.Xr libmicrovm 3 ,
+.Xr libnvmm 3 ,
+.Xr nvmm 4
+.Sh AUTHORS
+.An The DragonFly Project .
+.Sh BUGS
+The legacy 8250 console is output-only; interactive input requires the
+virtio-console
+.Pq Fl V
+device
+.Pq Pa console=hvc0 .
+One VM may be run per process.

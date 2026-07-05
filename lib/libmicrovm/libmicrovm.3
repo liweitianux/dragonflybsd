@@ -1,0 +1,124 @@
+.\" Copyright (c) 2026 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.Dd July 6, 2026
+.Dt LIBMICROVM 3
+.Os
+.Sh NAME
+.Nm microvm_create ,
+.Nm microvm_add_blk ,
+.Nm microvm_add_console ,
+.Nm microvm_add_net ,
+.Nm microvm_add_vsock ,
+.Nm microvm_load ,
+.Nm microvm_run ,
+.Nm microvm_destroy ,
+.Nm microvm_error
+.Nd NVMM-based PVH microVM monitor library
+.Sh LIBRARY
+.Lb libmicrovm
+.Sh SYNOPSIS
+.In microvm.h
+.Ft struct microvm *
+.Fn microvm_create "const struct microvm_config *cfg"
+.Ft int
+.Fn microvm_add_blk "struct microvm *vm" "const char *path"
+.Ft int
+.Fn microvm_add_console "struct microvm *vm"
+.Ft int
+.Fn microvm_add_net "struct microvm *vm" "const char *tap"
+.Ft int
+.Fn microvm_add_vsock "struct microvm *vm" "uint64_t guest_cid" "const char *uds_path"
+.Ft int
+.Fn microvm_load "struct microvm *vm"
+.Ft int
+.Fn microvm_run "struct microvm *vm"
+.Ft void
+.Fn microvm_destroy "struct microvm *vm"
+.Ft "const char *"
+.Fn microvm_error "const struct microvm *vm"
+.Sh DESCRIPTION
+The
+.Nm libmicrovm
+library boots a PVH-capable kernel
+.Pq Linux Dv CONFIG_PVH=y , or any kernel exposing Dv XEN_ELFNOTE_PHYS32_ENTRY
+as a lightweight virtual machine on top of
+.Xr libnvmm 3 :
+contiguous RAM from guest physical address 0, a userspace local and I/O APIC
+with a timer, an 8250 serial console, and virtio-mmio block, console and network
+devices.
+There is no firmware, PCI or ACPI.
+.Pp
+.Fn microvm_create
+allocates a VM from a
+.Vt struct microvm_config
+.Pq Va mem_bytes , Va kernel , Va initramfs , Va cmdline .
+.Fn microvm_add_blk ,
+.Fn microvm_add_console ,
+.Fn microvm_add_net
+and
+.Fn microvm_add_vsock
+attach devices and must be called before
+.Fn microvm_load .
+.Fn microvm_add_vsock
+gives the guest vsock context id
+.Fa guest_cid
+and bridges guest-initiated streams to host
+.Dv AF_UNIX
+sockets named
+.Pa <uds_path>_<port> .
+.Fn microvm_load
+creates the NVMM machine, loads the kernel, wires the devices and interrupt
+controller, and places the vCPU at the PVH entry point.
+.Fn microvm_run
+executes the guest until it shuts down or an unhandled exit occurs.
+.Fn microvm_destroy
+releases all resources.
+.Pp
+On failure the
+.Fn microvm_*
+functions return
+.Dv NULL
+or -1; a human-readable description is available from
+.Fn microvm_error .
+.Sh RETURN VALUES
+.Fn microvm_create
+returns a VM handle, or
+.Dv NULL
+on allocation failure.
+The remaining functions return 0 on success and -1 on failure.
+.Sh SEE ALSO
+.Xr libnvmm 3 ,
+.Xr nvmm 4 ,
+.Xr microvm 8
+.Sh AUTHORS
+.An The DragonFly Project .
+.Sh BUGS
+Device-model state is currently process-global, so one VM may be run per
+process.
+.Nm
+is x86-64 only, as
+.Xr libnvmm 3
+has no other backends.

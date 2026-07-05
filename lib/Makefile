@@ -77,6 +77,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libkvm \
 	libm \
 	libmagic \
+	libmicrovm \
 	${_libnetgraph} \
 	libnvmm \
 	libpam \
