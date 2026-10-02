@@ -1323,8 +1323,6 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			return (EINVAL);
 		}
 		fitit = FALSE;
-		if ((flags & MAP_TRYFIXED) == 0)
-			vm_map_remove(map, *addr, *addr + size);
 	}
 
 	uksmap = NULL;
@@ -1465,19 +1463,20 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		*addr = pmap_addr_hint(object, *addr, size);
 	}
 
-	/*
-	 * Stack mappings need special attention.
-	 *
-	 * Mappings that use virtual page tables will default to storing
-	 * the page table at offset 0.
-	 */
 	if (uksmap) {
+		/*
+		 * Stack mappings need special attention.
+		 */
 		rv = vm_map_find(map, uksmap, vp->v_rdev,
 				 foff, addr, size,
 				 align, fitit,
 				 VM_MAPTYPE_UKSMAP, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
 	} else if (flags & MAP_STACK) {
+		/*
+		 * Mappings that use virtual page tables will default to
+		 * storing the page table at offset 0.
+		 */
 		rv = vm_map_stack(map, addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
@@ -1492,6 +1491,9 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 				 align, fitit,
 				 VM_MAPTYPE_VPAGETABLE, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
+	} else if (flags & MAP_FIXED) {
+		rv = vm_map_replace(map, object, foff, *addr, size,
+				    prot, maxprot, docow);
 	} else {
 		rv = vm_map_find(map, object, NULL,
 				 foff, addr, size,
