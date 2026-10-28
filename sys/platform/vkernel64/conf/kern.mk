@@ -17,7 +17,7 @@ CFLAGS+=	-mno-fp-ret-in-387
 
 # Retpoline spectre protection
 .if ${CCVER:Mgcc*} && ${CCVER:S/gcc//} >= 80
-CFLAGS+=	-mindirect-branch=thunk-inline
+CFLAGS+=	-mindirect-branch=thunk-extern
 .endif
 
 # Remove the dynamic library hack for now

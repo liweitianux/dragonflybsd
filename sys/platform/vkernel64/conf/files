@@ -31,6 +31,7 @@ cpu/x86_64/misc/ktr.c			optional	ktr
 cpu/x86_64/misc/db_disasm.c		optional	ddb
 cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
 cpu/x86_64/misc/bzeront.s		standard
+cpu/x86_64/misc/retpoline.s		standard
 
 #
 # DOS mbr and gpt
