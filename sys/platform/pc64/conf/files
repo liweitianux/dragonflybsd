@@ -112,6 +112,7 @@ cpu/x86_64/misc/db_disasm.c		optional	ddb
 cpu/x86_64/misc/bzeront.s		standard
 cpu/x86_64/misc/monitor.s		standard
 cpu/x86_64/misc/retpoline.s		standard
+cpu/x86_64/misc/retpoline_ctl.c		standard
 #
 # DOS mbr and gpt
 kern/subr_diskmbr.c			standard

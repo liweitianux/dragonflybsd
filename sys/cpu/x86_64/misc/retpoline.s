@@ -46,8 +46,14 @@
  * pointer, so leaving it out turns a hypothetical code generation bug into a
  * link time error.
  *
+ * Each thunk occupies one RETPOLINE_SLOT byte slot padded with int3, so that
+ * retpoline_ctl.c can replace a whole body with a plain indirect branch at
+ * boot without touching anything else.
+ *
  * Reference: "Retpoline: A Branch Target Injection Mitigation", Intel, 2018.
  */
+
+.set	RETPOLINE_SLOT, 32
 
 .macro RETPOLINE_THUNK reg
 	.p2align 5
@@ -61,6 +67,7 @@ __x86_indirect_thunk_\reg:
 2:	movq	%\reg, (%rsp)
 	ret
 	.size	__x86_indirect_thunk_\reg, . - __x86_indirect_thunk_\reg
+	.fill	RETPOLINE_SLOT - (. - __x86_indirect_thunk_\reg), 1, 0xCC
 .endm
 
 	RETPOLINE_THUNK rax
@@ -97,3 +104,4 @@ __x86_indirect_thunk:
 2:	leaq	8(%rsp), %rsp
 	ret
 	.size	__x86_indirect_thunk, . - __x86_indirect_thunk
+	.fill	RETPOLINE_SLOT - (. - __x86_indirect_thunk), 1, 0xCC
