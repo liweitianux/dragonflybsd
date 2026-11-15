@@ -83,10 +83,24 @@
 /* Max number conversion buffer length: a u_quad_t in base 2, plus NUL byte. */
 #define MAXNBUF	(sizeof(intmax_t) * NBBY + 1)
 
+/*
+ * Per-call line buffer for the in-memory log.  A chunk is appended to the
+ * message buffer with one atomic reservation, so concurrent loggers cannot
+ * interleave characters within it.
+ */
+#define	MSGBUF_LINEBUF	256
+
+struct msgbuf_line {
+	int	len;
+	int	pri;
+	char	buf[MSGBUF_LINEBUF];
+};
+
 struct putchar_arg {
 	int	flags;
 	int	pri;
 	struct	tty *tty;
+	struct	msgbuf_line mbuf;
 };
 
 struct snprintf_arg {
@@ -98,14 +112,16 @@ extern	int log_open;
 
 struct	tty *constty;			/* pointer to console "window" tty */
 
-static void  msglogchar(int c, int pri, int tstamp);
-static void  msgaddchar(int c, void *dummy);
 static void  kputchar (int ch, void *arg);
 static char *ksprintn (char *nbuf, uintmax_t num, int base, int *lenp,
 		       int upper);
 static void  snprintf_func (int ch, void *arg);
 static int   msgbuf_timestamp(char *buf, size_t size);
 static void  msgbuf_resetstate(void);
+static void  msgbuf_append(const char *hdr, int hlen, const char *buf,
+		       int blen);
+static void  msgbuf_line_putc(struct msgbuf_line *ml, int c, int pri);
+static void  msgbuf_line_flush(struct msgbuf_line *ml);
 
 static int consintr = 1;		/* Ok to handle console interrupts? */
 static int msgbufmapped;		/* Set when safe to use msgbuf */
@@ -113,6 +129,7 @@ static int msgbuf_lastpri = -1;		/* priority of the current line */
 static int msgbuf_dangling;		/* current line is not terminated */
 static int cons_atbol = 1;		/* console is at start of line */
 static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin, "cons_spin");
+static struct spinlock msgbuf_spin = SPINLOCK_INITIALIZER(msgbuf_spin, "msgbuf");
 static thread_t constty_td = NULL;
 
 int msgbuftrigger;
@@ -326,6 +343,7 @@ log_console(struct uio *uio)
 	int c, i, error, iovlen, nl;
 	struct uio muio;
 	struct iovec *miov = NULL;
+	struct msgbuf_line ml;
 	char *consbuffer;
 	int pri;
 
@@ -333,6 +351,7 @@ log_console(struct uio *uio)
 		return;
 
 	pri = LOG_INFO | LOG_CONSOLE;
+	ml.len = 0;
 	muio = *uio;
 	iovlen = uio->uio_iovcnt * sizeof (struct iovec);
 	miov = kmalloc(iovlen, M_TEMP, M_WAITOK);
@@ -348,7 +367,7 @@ log_console(struct uio *uio)
 		if (error != 0)
 			break;
 		for (i = 0; i < c; i++) {
-			msglogchar(consbuffer[i], pri, 1);
+			msgbuf_line_putc(&ml, consbuffer[i], pri);
 			if (consbuffer[i] == '\n')
 				nl = 1;
 			else
@@ -356,7 +375,8 @@ log_console(struct uio *uio)
 		}
 	}
 	if (!nl)
-		msglogchar('\n', pri, 1);
+		msgbuf_line_putc(&ml, '\n', pri);
+	msgbuf_line_flush(&ml);
 	msgbuftrigger = 1;
 	kfree(miov, M_TEMP);
 	kfree(consbuffer, M_TEMP);
@@ -463,7 +483,7 @@ kputchar(int c, void *arg)
 	if ((flags & TOTTY) && tputchar(c, tp) < 0)
 		ap->flags &= ~TOTTY;
 	if ((flags & TOLOG))
-		msglogchar(c, ap->pri, 1);
+		msgbuf_line_putc(&ap->mbuf, c, ap->pri);
 	if ((flags & TOCONS) && c) {
 		if (c == '\n') {
 			cons_atbol = 1;
@@ -634,6 +654,9 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 
 	if (fmt == NULL)
 		fmt = "(fmt null)\n";
+
+	if (func == kputchar)
+		((struct putchar_arg *)arg)->mbuf.len = 0;
 
 	/*
 	 * For kputchar do not spin for the console lock.  We must not
@@ -946,6 +969,8 @@ done:
 			spin_unlock(&cons_spin);
 		crit_exit_hard();
 	}
+	if (func == kputchar)
+		msgbuf_line_flush(&((struct putchar_arg *)arg)->mbuf);
 	return (retval);
 }
 
@@ -1051,51 +1076,6 @@ SYSINIT(bufdaemon, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY,
         kproc_start, &constty_kp);
 
 /*
- * Put character in log buffer with a particular priority.
- *
- * MPSAFE, HARD INTERRUPT SAFE, NESTING SAFE
- * CRITICAL SECTIONS MIGHT BE IGNORED!  MUST NOT USE NORMAL
- * SPIN_LOCK MECHANISMS.
- */
-static void
-msglogchar(int c, int pri, int tstamp)
-{
-	char buf[32];
-	char nbuf[MAXNBUF];
-	char *p;
-	int i, n;
-
-	if (!msgbufmapped)
-		return;
-	if (c == '\0' || c == '\r')
-		return;
-	if (pri != -1 && pri != msgbuf_lastpri) {
-		if (msgbuf_dangling) {
-			msgaddchar('\n', NULL);
-			msgbuf_dangling = 0;
-		}
-		msgaddchar('<', NULL);
-		for (p = ksprintn(nbuf, (uintmax_t)pri, 10, NULL, 0); *p;)
-			msgaddchar(*p--, NULL);
-		msgaddchar('>', NULL);
-		msgbuf_lastpri = pri;
-	}
-	if (tstamp && msgbuf_show_timestamp &&
-	    msgbuf_dangling == 0 && c != '\n') {
-		n = msgbuf_timestamp(buf, sizeof(buf));
-		for (i = 0; i < n; i++)
-			msgaddchar(buf[i], NULL);
-	}
-	msgaddchar(c, NULL);
-	if (c == '\n') {
-		msgbuf_dangling = 0;
-		msgbuf_lastpri = -1;
-	} else {
-		msgbuf_dangling = 1;
-	}
-}
-
-/*
  * Advance a FIFO index monotonically.  Concurrent writers can compute slop
  * updates from slightly different write positions, so never move an index
  * backwards.
@@ -1115,40 +1095,133 @@ msgbuf_advance(volatile u_int *indexp, u_int newindex)
 }
 
 /*
- * Put char in log buffer.   Make sure nothing blows up beyond repair if
- * we have an MP race.
+ * Copy a chunk into the circular message buffer, wrapping as necessary.
+ */
+static void
+msgbuf_copyin(struct msgbuf *mbp, u_int index, const char *src, int len)
+{
+	u_int offset;
+	int first;
+
+	offset = index % mbp->msg_size;
+	first = mbp->msg_size - offset;
+	if (first > len)
+		first = len;
+	memcpy(mbp->msg_ptr + offset, src, first);
+	if (len > first)
+		memcpy(mbp->msg_ptr, src + first, len - first);
+}
+
+/*
+ * Append hdr followed by buf to the message buffer with a single atomic
+ * reservation.  The reservation makes the whole chunk contiguous, so
+ * concurrent writers cannot interleave characters inside it.  The line
+ * state and the prefix are handled by msgbuf_line_flush().
  *
  * MPSAFE, HARD INTERRUPT SAFE, NESTING SAFE
  * CRITICAL SECTIONS MIGHT BE IGNORED!  MUST NOT USE NORMAL
  * SPIN_LOCK MECHANISMS.
  */
 static void
-msgaddchar(int c, void *dummy)
+msgbuf_append(const char *hdr, int hlen, const char *buf, int blen)
 {
 	struct msgbuf *mbp;
 	u_int lindex;
 	u_int rindex;
+	u_int total;
 	u_int xindex;
 	u_int n;
 
 	if (!msgbufmapped)
 		return;
+	total = hlen + blen;
+	if (total == 0)
+		return;
 	mbp = msgbufp;
 	lindex = mbp->msg_bufl;
 	rindex = mbp->msg_bufr;
-	xindex = atomic_fetchadd_int(&mbp->msg_bufx, 1);
+	xindex = atomic_fetchadd_int(&mbp->msg_bufx, total);
 
-	mbp->msg_ptr[xindex % mbp->msg_size] = c;
-	n = xindex - lindex;
+	if (hlen)
+		msgbuf_copyin(mbp, xindex, hdr, hlen);
+	if (blen)
+		msgbuf_copyin(mbp, xindex + hlen, buf, blen);
+
+	n = (xindex + total) - lindex;
 	if (n > mbp->msg_size - 1024) {
-		lindex = xindex - mbp->msg_size + 2048;
+		lindex = xindex + total - mbp->msg_size + 2048;
 		msgbuf_advance(&mbp->msg_bufl, lindex);
 	}
-	n = xindex - rindex;
+	n = (xindex + total) - rindex;
 	if (n > mbp->msg_size - 1024) {
-		rindex = xindex - mbp->msg_size + 2048;
+		rindex = xindex + total - mbp->msg_size + 2048;
 		msgbuf_advance(&mbp->msg_bufr, rindex);
 	}
+}
+
+/*
+ * Format the prefix for a buffered line and append the line.  The state
+ * lock is taken with trylock only: a failed attempt still appends the data
+ * atomically, it just does not update the shared line state.
+ */
+static void
+msgbuf_line_flush(struct msgbuf_line *ml)
+{
+	char hdr[64];
+	int bol, hlen, locked, n;
+
+	if (ml->len == 0)
+		return;
+	if (!msgbufmapped) {
+		ml->len = 0;
+		return;
+	}
+
+	hlen = 0;
+	locked = spin_trylock(&msgbuf_spin);
+	bol = (msgbuf_dangling == 0);
+	if (!bol && ml->pri != -1 && ml->pri != msgbuf_lastpri) {
+		hdr[hlen++] = '\n';
+		bol = 1;
+	}
+	if (bol) {
+		if (ml->pri != -1) {
+			n = ksnprintf(hdr + hlen, sizeof(hdr) - hlen,
+			    "<%d>", ml->pri);
+			if (n > (int)sizeof(hdr) - hlen - 1)
+				n = (int)sizeof(hdr) - hlen - 1;
+			hlen += n;
+			msgbuf_lastpri = ml->pri;
+		}
+		if (msgbuf_show_timestamp && ml->buf[0] != '\n') {
+			n = msgbuf_timestamp(hdr + hlen,
+			    sizeof(hdr) - hlen);
+			hlen += n;
+		}
+	}
+	msgbuf_append(hdr, hlen, ml->buf, ml->len);
+	msgbuf_dangling = (ml->buf[ml->len - 1] != '\n');
+	if (msgbuf_dangling == 0)
+		msgbuf_lastpri = -1;
+	if (locked)
+		spin_unlock(&msgbuf_spin);
+	ml->len = 0;
+}
+
+/*
+ * Buffer a character for the in-memory log.  Complete lines are flushed
+ * immediately; a long line is flushed when the buffer fills up.
+ */
+static void
+msgbuf_line_putc(struct msgbuf_line *ml, int c, int pri)
+{
+	if (c == '\0' || c == '\r')
+		return;
+	if (ml->len == 0)
+		ml->pri = pri;
+	ml->buf[ml->len++] = c;
+	if (c == '\n' || ml->len == MSGBUF_LINEBUF)
+		msgbuf_line_flush(ml);
 }
 
 static void
@@ -1157,6 +1230,7 @@ msgbufcopy(struct msgbuf *oldp)
 	u_int rindex;
 	u_int xindex;
 	u_int n;
+	char ch, last;
 
 	rindex = oldp->msg_bufr;
 	xindex = oldp->msg_bufx;
@@ -1165,10 +1239,15 @@ msgbufcopy(struct msgbuf *oldp)
 	n = xindex - rindex;
 	if (n > oldp->msg_size - 1024)
 		rindex = xindex - oldp->msg_size + 2048;
+	last = '\n';
 	while (rindex != xindex) {
-		msglogchar(oldp->msg_ptr[rindex % oldp->msg_size], -1, 0);
+		ch = oldp->msg_ptr[rindex % oldp->msg_size];
+		msgbuf_append(NULL, 0, &ch, 1);
+		last = ch;
 		++rindex;
 	}
+	msgbuf_dangling = (last != '\n');
+	msgbuf_lastpri = -1;
 }
 
 void
