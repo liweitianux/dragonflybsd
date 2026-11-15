@@ -807,6 +807,37 @@ readklog(void)
 }
 
 /*
+ * The kernel may prefix messages with a boot-relative timestamp such as
+ * "[ 1234.567890] ".  syslogd adds its own timestamp to every message, so
+ * drop the kernel one instead of storing both.  Return the original string
+ * if it does not start with a kernel timestamp, which also covers kernels
+ * that do not generate timestamps.
+ */
+static char *
+strip_kernel_timestamp(char *p)
+{
+	char *q;
+
+	if (*p != '[')
+		return (p);
+	q = p + 1;
+	while (*q == ' ')
+		q++;
+	if (*q < '0' || *q > '9')
+		return (p);
+	while (*q >= '0' && *q <= '9')
+		q++;
+	if (*q == '.') {
+		q++;
+		while (*q >= '0' && *q <= '9')
+			q++;
+	}
+	if (*q != ']' || q[1] != ' ')
+		return (p);
+	return (q + 2);
+}
+
+/*
  * Take a raw input line from /dev/klog, format similar to syslog().
  */
 static void
@@ -829,6 +860,7 @@ printsys(char *msg)
 			isprintf = 0;
 		}
 	}
+	p = strip_kernel_timestamp(p);
 	/*
 	 * Kernel printf's and LOG_CONSOLE messages have been displayed
 	 * on the console already.
