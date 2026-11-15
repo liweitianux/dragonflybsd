@@ -61,6 +61,8 @@
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
+#include <machine/atomic.h>
+
 #ifdef DDB
 #include <ddb/ddb.h>
 #endif
@@ -615,6 +617,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 	char padc;
 	int retval = 0, stop = 0;
 	int usespin;
+	int gotspin = 0;
 	int ddb_active;
 
 #ifdef DDB
@@ -633,12 +636,11 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 		fmt = "(fmt null)\n";
 
 	/*
-	 * For kputchar just straight-out don't spin, even if it means losing
-	 * output from several cpu's posting at the same time.  This allows
-	 * us to call debugging / warning kprintf()s from the likes of
-	 * the Xinvltlb hard interrupt which ignore critical sections.
-	 *
-	 * This also avoids deadlocking on nested kprintf()s.
+	 * For kputchar do not spin for the console lock.  We must not
+	 * deadlock against kprintf()s from Xinvltlb (which ignores critical
+	 * sections) or against nested kprintf()s.  If the lock is already
+	 * held, only suppress console and tty output for this message; the
+	 * message is still written to the in-memory log below.
 	 */
 	usespin = (func == kputchar &&
 		   (kprintf_logging & TONOSPIN) == 0 &&
@@ -647,7 +649,10 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 	if (usespin) {
 		crit_enter_hard();
 		if (spin_trylock(&cons_spin) == 0) {
-			goto headoncrash;	/* failed */
+			((struct putchar_arg *)arg)->flags &=
+			    ~(TOCONS | TOTTY | TOWAKEUP);
+		} else {
+			gotspin = 1;
 		}
 	}
 
@@ -937,8 +942,8 @@ done:
 	 * Cleanup reentrancy issues.
 	 */
 	if (usespin) {
-		spin_unlock(&cons_spin);
-headoncrash:
+		if (gotspin)
+			spin_unlock(&cons_spin);
 		crit_exit_hard();
 	}
 	return (retval);
@@ -1091,6 +1096,25 @@ msglogchar(int c, int pri, int tstamp)
 }
 
 /*
+ * Advance a FIFO index monotonically.  Concurrent writers can compute slop
+ * updates from slightly different write positions, so never move an index
+ * backwards.
+ */
+static void
+msgbuf_advance(volatile u_int *indexp, u_int newindex)
+{
+	u_int old;
+
+	for (;;) {
+		old = *indexp;
+		if ((int)(newindex - old) <= 0)
+			return;
+		if (atomic_cmpxchg_int(indexp, old, newindex) == old)
+			return;
+	}
+}
+
+/*
  * Put char in log buffer.   Make sure nothing blows up beyond repair if
  * we have an MP race.
  *
@@ -1112,21 +1136,18 @@ msgaddchar(int c, void *dummy)
 	mbp = msgbufp;
 	lindex = mbp->msg_bufl;
 	rindex = mbp->msg_bufr;
-	xindex = mbp->msg_bufx++;	/* Allow SMP race */
-	cpu_ccfence();
+	xindex = atomic_fetchadd_int(&mbp->msg_bufx, 1);
 
 	mbp->msg_ptr[xindex % mbp->msg_size] = c;
 	n = xindex - lindex;
 	if (n > mbp->msg_size - 1024) {
 		lindex = xindex - mbp->msg_size + 2048;
-		cpu_ccfence();
-		mbp->msg_bufl = lindex;
+		msgbuf_advance(&mbp->msg_bufl, lindex);
 	}
 	n = xindex - rindex;
 	if (n > mbp->msg_size - 1024) {
 		rindex = xindex - mbp->msg_size + 2048;
-		cpu_ccfence();
-		mbp->msg_bufr = rindex;
+		msgbuf_advance(&mbp->msg_bufr, rindex);
 	}
 }
 
