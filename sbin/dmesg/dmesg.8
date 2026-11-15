@@ -28,7 +28,7 @@
 .\"     @(#)dmesg.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/dmesg/dmesg.8,v 1.5.2.5 2002/08/21 18:58:17 trhodes Exp $
 .\"
-.Dd September 29, 2016
+.Dd November 15, 2026
 .Dt DMESG 8
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Op Fl n Ar dumpnr
+.Op Fl t | Fl T
 .Sh DESCRIPTION
 The
 .Nm
@@ -67,6 +68,20 @@ This includes any syslog records and
 output.
 .It Fl c
 Clear the kernel buffer after printing.
+.It Fl t
+Do not print the boot-relative timestamps that the kernel prepends to
+its messages.
+This is useful when the output is processed by a tool that does not
+expect the timestamp prefixes.
+.It Fl T
+Print the boot-relative timestamps as local wall-clock time instead of
+seconds since boot.
+The conversion uses the kernel boot time and therefore requires the
+kernel symbol
+.Va boottime
+when a core file is examined.
+This option is mutually exclusive with
+.Fl t .
 .It Fl f[f]
 After the initial message buffer dump
 .Nm
@@ -103,8 +118,21 @@ usually a snapshot of the buffer contents
 taken soon after file systems are mounted
 at startup time
 .El
+.Sh SYSCTL
+The kernel prepends timestamps to messages according to the following
+.Xr sysctl 8
+variables:
+.Bl -tag -width indent
+.It Va kern.msgbuf_show_timestamp
+Set to 0 to disable timestamps in the message buffer and on the console.
+The default is 1.
+.It Va kern.msgbuf_timestamp_precision
+Number of fractional digits in the timestamp, in the range 0 to 9.
+The default is 6.
+.El
 .Sh SEE ALSO
 .Xr sysctl 3 ,
+.Xr sysctl 8 ,
 .Xr syslogd 8
 .Sh HISTORY
 The

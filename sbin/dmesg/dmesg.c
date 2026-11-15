@@ -39,9 +39,12 @@
 #include <err.h>
 #include <fcntl.h>
 #include <kvm.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <vis.h>
 #include <sys/syslog.h>
@@ -49,30 +52,141 @@
 static struct nlist nl[] = {
 #define	X_MSGBUF	0
 	{ "msgbufp",	0, 0, 0, 0 },
+#define	X_BOOTTIME	1
+	{ "boottime",	0, 0, 0, 0 },
 	{ NULL,		0, 0, 0, 0 },
 };
 
+/*
+ * Kernel message timestamps have the form "[ 1234.567890] ", where the
+ * fractional part can contain 0 to 9 digits.  A timestamp can optionally be
+ * preceded by a "<pri>" syslog prefix, and the prefix is printed by dmesg -a.
+ */
+#define	TSMAX	32
+
+/*
+ * State carried across dumpbuf() calls.  The kvm and -f paths feed the
+ * buffer in chunks, so a timestamp or priority prefix can straddle two
+ * calls.
+ */
+struct dumpstate {
+	int	newl;		/* at start of a line */
+	int	skip;		/* suppress the rest of the line */
+	int	pri;		/* accumulated syslog priority */
+	int	atmsg;		/* at start of message content */
+	int	pricand;	/* collecting a <pri> candidate */
+	int	prilen;
+	char	pribuf[16];
+	int	tscand;		/* collecting a timestamp candidate */
+	int	tslen;
+	char	tsbuf[TSMAX];
+	int	tsstate;
+	int	tsfracdigits;
+	unsigned long long tssec;
+	unsigned long long tsfrac;
+};
+
 static void dumpbuf(char *bp, size_t bufpos, size_t buflen,
-		    int *newl, int *skip, int *pri);
+		    struct dumpstate *ds);
+static void dumpflush(struct dumpstate *ds);
 static void usage(void) __dead2;
 
 #define	KREAD(addr, var) \
 	kvm_read(kd, addr, &var, sizeof(var)) != sizeof(var)
 
-#define INCRBUFSIZE	65536
+#define	INCRBUFSIZE	65536
 
 static int all_opt;
+static int strip_opt;
+static int human_opt;
+static struct timespec boottime;
+
+static void
+emit_char(struct dumpstate *ds, int ch)
+{
+	char buf[5];
+
+	vis(buf, ch, VIS_NOSLASH, 0);
+	if (buf[1] == 0)
+		putchar(buf[0]);
+	else
+		printf("%s", buf);
+	ds->newl = (ch == '\n');
+	ds->atmsg = (ch == '\n');
+}
+
+/*
+ * Print a kernel timestamp as local wall-clock time.  If the conversion
+ * fails, print the original text so no information is lost.
+ */
+static void
+print_kernel_time(struct dumpstate *ds, unsigned long long sec,
+    unsigned long long frac, int prec, const char *raw, int rawlen)
+{
+	static const long long tsdiv[10] = {
+		1000000000LL, 100000000LL, 10000000LL, 1000000LL, 100000LL,
+		10000LL, 1000LL, 100LL, 10LL, 1LL
+	};
+	struct tm tm;
+	time_t t;
+	char buf[64];
+	long long nsec;
+	int i;
+
+	nsec = (prec > 0) ? (long long)(frac * tsdiv[prec]) : 0;
+	t = boottime.tv_sec + (time_t)sec;
+	if ((long long)boottime.tv_nsec + nsec >= 1000000000LL)
+		t++;
+	if (localtime_r(&t, &tm) != NULL &&
+	    strftime(buf, sizeof(buf), "%a %b %e %H:%M:%S %Z %Y", &tm) != 0) {
+		printf("[%s] ", buf);
+		return;
+	}
+	for (i = 0; i < rawlen; i++)
+		emit_char(ds, (u_char)raw[i]);
+}
+
+static void
+ts_abort(struct dumpstate *ds)
+{
+	int i;
+
+	ds->tscand = 0;
+	for (i = 0; i < ds->tslen; i++)
+		emit_char(ds, (u_char)ds->tsbuf[i]);
+}
+
+static void
+ts_done(struct dumpstate *ds)
+{
+	if (human_opt)
+		print_kernel_time(ds, ds->tssec, ds->tsfrac,
+		    ds->tsfracdigits, ds->tsbuf, ds->tslen);
+	ds->tscand = 0;
+	ds->newl = 0;
+	ds->atmsg = 0;
+}
+
+static void
+pri_abort(struct dumpstate *ds)
+{
+	int i;
+
+	ds->pricand = 0;
+	emit_char(ds, '<');
+	for (i = 0; i < ds->prilen; i++)
+		emit_char(ds, (u_char)ds->pribuf[i]);
+}
 
 int
 main(int argc, char **argv)
 {
-	int newl, skip;
+	struct dumpstate ds;
 	struct msgbuf *bufp, cur;
 	char *bp, *memf, *nlistf;
 	kvm_t *kd;
 	int ch;
 	int clear = 0;
-	int pri = 0;
 	int tailmode = 0;
 	int kno;
 	size_t buflen, bufpos;
@@ -80,7 +194,7 @@ main(int argc, char **argv)
 
 	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
-	while ((ch = getopt(argc, argv, "acfM:N:n:")) != -1) {
+	while ((ch = getopt(argc, argv, "acfM:N:n:tT")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt++;
@@ -108,6 +222,12 @@ main(int argc, char **argv)
 				asprintf(&nlistf, "/var/crash/kern.%d", kno);
 			}
 			break;
+		case 't':
+			strip_opt = 1;
+			break;
+		case 'T':
+			human_opt = 1;
+			break;
 		case '?':
 		default:
 			usage();
@@ -116,12 +236,22 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	newl = 1;
-	skip = 0;
-	pri = 0;
+	if (strip_opt && human_opt)
+		errx(1, "-t and -T are mutually exclusive");
+
+	memset(&ds, 0, sizeof(ds));
+	ds.newl = 1;
+	ds.atmsg = 1;
 
 	if (memf == NULL && nlistf == NULL && tailmode == 0) {
 		/* Running kernel. Use sysctl. */
+		if (human_opt) {
+			size_t len = sizeof(boottime);
+
+			if (sysctlbyname("kern.boottime", &boottime, &len,
+			    NULL, 0) == -1)
+				err(1, "sysctl kern.boottime");
+		}
 		buflen = 0;
 		if (sysctlbyname("kern.msgbuf", NULL, &buflen, NULL, 0) == -1)
 			err(1, "sysctl kern.msgbuf");
@@ -134,7 +264,7 @@ main(int argc, char **argv)
 			err(1, "sysctl kern.msgbuf");
 		/* We get a dewrapped buffer using sysctl. */
 		bufpos = 0;
-		dumpbuf(bp, bufpos, buflen, &newl, &skip, &pri);
+		dumpbuf(bp, bufpos, buflen, &ds);
 	} else {
 		u_int rindex;
 		u_int xindex;
@@ -151,6 +281,13 @@ main(int argc, char **argv)
 		if (nl[X_MSGBUF].n_type == 0)
 			errx(1, "%s: msgbufp not found",
 			    nlistf ? nlistf : "namelist");
+		if (human_opt) {
+			if (nl[X_BOOTTIME].n_type == 0)
+				errx(1, "%s: boottime not found",
+				    nlistf ? nlistf : "namelist");
+			if (KREAD(nl[X_BOOTTIME].n_value, boottime))
+				errx(1, "kvm_read: %s", kvm_geterr(kd));
+		}
 		bp = malloc(INCRBUFSIZE);
 		if (!bp)
 			errx(1, "malloc failed");
@@ -198,7 +335,7 @@ main(int argc, char **argv)
 				errx(1, "kvm_read: %s", kvm_geterr(kd));
 			}
 			if (buflen)
-				dumpbuf(bp, 0, buflen, &newl, &skip, &pri);
+				dumpbuf(bp, 0, buflen, &ds);
 			ri = (ri + buflen) % cur.msg_size;
 			n = n - buflen;
 			rindex += buflen;
@@ -214,7 +351,8 @@ main(int argc, char **argv)
 		}
 		kvm_close(kd);
 	}
-	if (!newl)
+	dumpflush(&ds);
+	if (!ds.newl)
 		putchar('\n');
 	if (clear) {
 		if (sysctlbyname("kern.msgbuf_clear", NULL, NULL,
@@ -225,14 +363,18 @@ main(int argc, char **argv)
 	return(0);
 }
 
-static
-void
-dumpbuf(char *bp, size_t bufpos, size_t buflen,
-	int *newl, int *skip, int *pri)
+/*
+ * Process one character from the kernel message buffer.
+ *
+ * The parser recognizes two optional prefixes at the start of a message:
+ * a syslog "<pri>" sequence and a kernel timestamp.  Everything else is
+ * printed after vis(3) encoding.
+ */
+static void
+dumpbuf(char *bp, size_t bufpos, size_t buflen, struct dumpstate *ds)
 {
 	int ch;
 	char *p, *ep;
-	char buf[5];
 
 	/*
 	 * The message buffer is circular.  If the buffer has wrapped, the
@@ -247,39 +389,152 @@ dumpbuf(char *bp, size_t bufpos, size_t buflen,
 		if (p == bp + buflen)
 			p = bp;
 		ch = *p;
-		/* Skip "\n<.*>" syslog sequences. */
-		if (*skip) {
+		if (ch == '\0')
+			continue;
+
+		if (ds->skip) {
 			if (ch == '\n') {
-				*skip = 0;
-				*newl = 1;
-			} if (ch == '>') {
-				if (LOG_FAC(*pri) == LOG_KERN)
-					*newl = *skip = 0;
-			} else if (ch >= '0' && ch <= '9') {
-				*pri *= 10;
-				*pri += ch - '0';
+				ds->skip = 0;
+				ds->newl = 1;
+				ds->atmsg = 1;
 			}
 			continue;
 		}
-		if (*newl && ch == '<' && all_opt == 0) {
-			*pri = 0;
-			*skip = 1;
+
+		if (ds->pricand) {
+			if (ch >= '0' && ch <= '9' && ds->prilen < 9) {
+				ds->pribuf[ds->prilen++] = ch;
+				ds->pri = ds->pri * 10 + (ch - '0');
+				continue;
+			}
+			if (ch == '>') {
+				ds->pricand = 0;
+				if (all_opt) {
+					int i;
+
+					emit_char(ds, '<');
+					for (i = 0; i < ds->prilen; i++)
+						emit_char(ds,
+						    (u_char)ds->pribuf[i]);
+					emit_char(ds, '>');
+					ds->newl = 0;
+					ds->atmsg = 1;
+				} else {
+					ds->newl = 0;
+					ds->atmsg = 1;
+					if (LOG_FAC(ds->pri) != LOG_KERN)
+						ds->skip = 1;
+				}
+				continue;
+			}
+			pri_abort(ds);
+			/* FALLTHROUGH and process ch normally. */
+		}
+
+		if (ds->tscand) {
+			int bad = 0;
+
+			if (ds->tslen >= TSMAX - 1) {
+				ts_abort(ds);
+				bad = 2;		/* ch was not buffered */
+			} else {
+				ds->tsbuf[ds->tslen++] = ch;
+				switch (ds->tsstate) {
+				case 0:		/* after '[' */
+					if (ch == ' ')
+						break;
+					if (ch >= '0' && ch <= '9') {
+						ds->tssec = ch - '0';
+						ds->tsstate = 1;
+						break;
+					}
+					bad = 1;
+					break;
+				case 1:		/* seconds */
+					if (ch >= '0' && ch <= '9') {
+						if (ds->tssec >
+						    (ULLONG_MAX -
+						     (ch - '0')) / 10) {
+							bad = 1;
+							break;
+						}
+						ds->tssec = ds->tssec * 10 +
+						    (ch - '0');
+					} else if (ch == '.') {
+						ds->tsstate = 2;
+					} else if (ch == ']') {
+						ds->tsstate = 3;
+					} else {
+						bad = 1;
+					}
+					break;
+				case 2:		/* fraction */
+					if (ch >= '0' && ch <= '9') {
+						if (ds->tsfracdigits >= 9) {
+							bad = 1;
+							break;
+						}
+						ds->tsfrac = ds->tsfrac * 10 +
+						    (ch - '0');
+						ds->tsfracdigits++;
+					} else if (ch == ']') {
+						ds->tsstate = 3;
+					} else {
+						bad = 1;
+					}
+					break;
+				case 3:		/* trailing space */
+					if (ch == ' ')
+						ts_done(ds);
+					else
+						bad = 1;
+					break;
+				}
+			}
+			if (bad == 0)
+				continue;
+			if (bad == 1) {
+				ts_abort(ds);
+				continue;
+			}
+			/* FALLTHROUGH and process ch normally if not buffered. */
+		}
+
+		if (ds->newl && ch == '<') {
+			ds->pricand = 1;
+			ds->prilen = 0;
+			ds->pri = 0;
 			continue;
 		}
-		if (ch == '\0')
+		if (ds->atmsg && (strip_opt || human_opt) && ch == '[') {
+			ds->tscand = 1;
+			ds->tslen = 0;
+			ds->tsstate = 0;
+			ds->tsfrac = 0;
+			ds->tsfracdigits = 0;
+			ds->tsbuf[ds->tslen++] = ch;
 			continue;
-		*newl = (ch == '\n');
-		vis(buf, ch, VIS_NOSLASH, 0);
-		if (buf[1] == 0)
-			putchar(buf[0]);
-		else
-			printf("%s", buf);
+		}
+		emit_char(ds, ch);
 	} while (++p != ep);
+}
+
+/*
+ * Flush a partial prefix at the end of the buffer.
+ */
+static void
+dumpflush(struct dumpstate *ds)
+{
+	if (ds->pricand)
+		pri_abort(ds);
+	if (ds->tscand)
+		ts_abort(ds);
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: dmesg [-ac] [-M core] [-N system]\n");
+	fprintf(stderr, "usage: dmesg [-acf] [-M core] [-N system] "
+	    "[-n dumpnr] [-t | -T]\n");
 	exit(1);
 }
