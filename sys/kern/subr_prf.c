@@ -48,6 +48,7 @@
 #include <sys/tprintf.h>
 #include <sys/stdint.h>
 #include <sys/syslog.h>
+#include <sys/time.h>
 #include <sys/cons.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
@@ -95,15 +96,20 @@ extern	int log_open;
 
 struct	tty *constty;			/* pointer to console "window" tty */
 
-static void  msglogchar(int c, int pri);
+static void  msglogchar(int c, int pri, int tstamp);
 static void  msgaddchar(int c, void *dummy);
 static void  kputchar (int ch, void *arg);
 static char *ksprintn (char *nbuf, uintmax_t num, int base, int *lenp,
 		       int upper);
 static void  snprintf_func (int ch, void *arg);
+static int   msgbuf_timestamp(char *buf, size_t size);
+static void  msgbuf_resetstate(void);
 
 static int consintr = 1;		/* Ok to handle console interrupts? */
 static int msgbufmapped;		/* Set when safe to use msgbuf */
+static int msgbuf_lastpri = -1;		/* priority of the current line */
+static int msgbuf_dangling;		/* current line is not terminated */
+static int cons_atbol = 1;		/* console is at start of line */
 static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin, "cons_spin");
 static thread_t constty_td = NULL;
 
@@ -128,6 +134,63 @@ TUNABLE_INT("security.unprivileged_read_msgbuf", &unprivileged_read_msgbuf);
 SYSCTL_INT(_security, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
     &unprivileged_read_msgbuf, 0,
     "Unprivileged processes may read the kernel message buffer");
+
+static int msgbuf_show_timestamp = 1;
+TUNABLE_INT("kern.msgbuf_show_timestamp", &msgbuf_show_timestamp);
+SYSCTL_INT(_kern, OID_AUTO, msgbuf_show_timestamp, CTLFLAG_RW,
+    &msgbuf_show_timestamp, 0,
+    "Prepend a boot-relative timestamp to kernel messages");
+
+static int msgbuf_timestamp_precision = 6;
+TUNABLE_INT("kern.msgbuf_timestamp_precision", &msgbuf_timestamp_precision);
+SYSCTL_INT(_kern, OID_AUTO, msgbuf_timestamp_precision, CTLFLAG_RW,
+    &msgbuf_timestamp_precision, 0,
+    "Number of fractional digits in kernel message timestamps");
+
+/*
+ * Format the current boot-relative time as a Linux-style timestamp:
+ * "[ 1234.567890] ".  The precision is clamped to the range 0..9.
+ */
+static int
+msgbuf_timestamp(char *buf, size_t size)
+{
+	static const long tsdiv[10] = {
+		1000000000L, 100000000L, 10000000L, 1000000L, 100000L,
+		10000L, 1000L, 100L, 10L, 1L
+	};
+	struct timespec ts;
+	intmax_t sec;
+	int n, prec;
+
+	prec = msgbuf_timestamp_precision;
+	if (prec < 0)
+		prec = 0;
+	else if (prec > 9)
+		prec = 9;
+	getnanouptime(&ts);
+	sec = (intmax_t)ts.tv_sec;
+	if (prec == 0)
+		n = ksnprintf(buf, size, "[%5jd.] ", sec);
+	else
+		n = ksnprintf(buf, size, "[%5jd.%0*ld] ", sec, prec,
+		    (long)(ts.tv_nsec / tsdiv[prec]));
+	if (n > (int)size - 1)
+		n = (int)size - 1;
+	return (n);
+}
+
+/*
+ * Reset the line state after the message buffer is cleared or remapped.
+ * The console gets its own state because it can be enabled or disabled
+ * independently of the in-memory log.
+ */
+static void
+msgbuf_resetstate(void)
+{
+	msgbuf_lastpri = -1;
+	msgbuf_dangling = 0;
+	cons_atbol = 1;
+}
 
 /*
  * Warn that a system table is full.
@@ -283,7 +346,7 @@ log_console(struct uio *uio)
 		if (error != 0)
 			break;
 		for (i = 0; i < c; i++) {
-			msglogchar(consbuffer[i], pri);
+			msglogchar(consbuffer[i], pri, 1);
 			if (consbuffer[i] == '\n')
 				nl = 1;
 			else
@@ -291,7 +354,7 @@ log_console(struct uio *uio)
 		}
 	}
 	if (!nl)
-		msglogchar('\n', pri);
+		msglogchar('\n', pri, 1);
 	msgbuftrigger = 1;
 	kfree(miov, M_TEMP);
 	kfree(consbuffer, M_TEMP);
@@ -398,9 +461,23 @@ kputchar(int c, void *arg)
 	if ((flags & TOTTY) && tputchar(c, tp) < 0)
 		ap->flags &= ~TOTTY;
 	if ((flags & TOLOG))
-		msglogchar(c, ap->pri);
-	if ((flags & TOCONS) && c)
+		msglogchar(c, ap->pri, 1);
+	if ((flags & TOCONS) && c) {
+		if (c == '\n') {
+			cons_atbol = 1;
+		} else if (c != '\r') {
+			if (cons_atbol && msgbuf_show_timestamp) {
+				char buf[32];
+				int i, n;
+
+				n = msgbuf_timestamp(buf, sizeof(buf));
+				for (i = 0; i < n; i++)
+					cnputc((u_char)buf[i]);
+			}
+			cons_atbol = 0;
+		}
 		cnputc(c);
+	}
 	if ((flags & TOWAKEUP) && mycpu->gd_intr_nesting_level == 0)
 		wakeup(constty_td);
 }
@@ -976,34 +1053,40 @@ SYSINIT(bufdaemon, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY,
  * SPIN_LOCK MECHANISMS.
  */
 static void
-msglogchar(int c, int pri)
+msglogchar(int c, int pri, int tstamp)
 {
-	static int lastpri = -1;
-	static int dangling;
+	char buf[32];
 	char nbuf[MAXNBUF];
 	char *p;
+	int i, n;
 
 	if (!msgbufmapped)
 		return;
 	if (c == '\0' || c == '\r')
 		return;
-	if (pri != -1 && pri != lastpri) {
-		if (dangling) {
+	if (pri != -1 && pri != msgbuf_lastpri) {
+		if (msgbuf_dangling) {
 			msgaddchar('\n', NULL);
-			dangling = 0;
+			msgbuf_dangling = 0;
 		}
 		msgaddchar('<', NULL);
 		for (p = ksprintn(nbuf, (uintmax_t)pri, 10, NULL, 0); *p;)
 			msgaddchar(*p--, NULL);
 		msgaddchar('>', NULL);
-		lastpri = pri;
+		msgbuf_lastpri = pri;
+	}
+	if (tstamp && msgbuf_show_timestamp &&
+	    msgbuf_dangling == 0 && c != '\n') {
+		n = msgbuf_timestamp(buf, sizeof(buf));
+		for (i = 0; i < n; i++)
+			msgaddchar(buf[i], NULL);
 	}
 	msgaddchar(c, NULL);
 	if (c == '\n') {
-		dangling = 0;
-		lastpri = -1;
+		msgbuf_dangling = 0;
+		msgbuf_lastpri = -1;
 	} else {
-		dangling = 1;
+		msgbuf_dangling = 1;
 	}
 }
 
@@ -1062,7 +1145,7 @@ msgbufcopy(struct msgbuf *oldp)
 	if (n > oldp->msg_size - 1024)
 		rindex = xindex - oldp->msg_size + 2048;
 	while (rindex != xindex) {
-		msglogchar(oldp->msg_ptr[rindex % oldp->msg_size], -1);
+		msglogchar(oldp->msg_ptr[rindex % oldp->msg_size], -1, 0);
 		++rindex;
 	}
 }
@@ -1083,6 +1166,7 @@ msgbufinit(void *ptr, size_t size)
 		msgbufp->msg_size = (char *)msgbufp - cp;
 	}
 	msgbufp->msg_ptr = cp;
+	msgbuf_resetstate();
 	if (msgbufmapped && oldp != msgbufp)
 		msgbufcopy(oldp);
 	cpu_mfence();
@@ -1190,6 +1274,7 @@ sysctl_kern_msgbuf_clear(SYSCTL_HANDLER_ARGS)
 		msgbufp->msg_bufr = msgbufp->msg_bufx;
 		msgbufp->msg_bufl = msgbufp->msg_bufx;
 		bzero(msgbufp->msg_ptr, msgbufp->msg_size);
+		msgbuf_resetstate();
 		msgbuf_clear = 0;
 	}
 	return (error);
